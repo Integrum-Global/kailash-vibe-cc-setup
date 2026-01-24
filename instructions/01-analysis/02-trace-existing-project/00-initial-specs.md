@@ -15,7 +15,7 @@
      - 15% of the client specific requirements goes into consideration for self-service functionalities that can be reused (agnostic)
      - 5% customization
 3. Assume that the current project has documentations and comments that could have been misaligned and missing
-   - Ultrathink with subagents and skills, then peruse the codebase, docs, and tests
+   - Analyze thoroughly with subagents and skills, then peruse the codebase, docs, and tests
      - Analyze and achieve a 100% trace on the current state
        - Ensure that you review with independent subagents and ensure that there are no gaps.
        - Document your analysis, in details, to the extent that any developer can read it and achieve 100% situational awareness
@@ -34,7 +34,7 @@
         - DO NOT treat issues and comments as naive technical problems that requires patching
         - ALWAYS ensure that you have a 'user story' that specifically states the intent, objective, and deliverable/KPI.
           - Always assume that comments are vague and can be interpreted in different ways
-            - thus, ultrathink and identify the root causes
+            - thus, analyze deeply and identify the root causes
         - Exercise your expertise.
    - Rationalize them and create a system of knowledge base and procedures that would help developers
      - analyze the issues comprehensively
@@ -45,7 +45,7 @@
 
 ### Create project specific agents and skills
 1. Using as many subagents as required, peruse docs/00-developers
-   - Ultrathink and read beyond the docs into the intent of this project/product
+   - Think deeply and read beyond the docs into the intent of this project/product
    - Understand the roles and use of agents, skills, docs
      - Agents - What to do, how to think about this, what can it work with, following the procedural directives
      - Skills - Distilled knowledge that agents can achieve 100% situational aware with
