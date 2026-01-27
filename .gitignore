@@ -49,3 +49,8 @@ htmlcov/
 *.pem
 *.key
 secrets/
+
+# Generated script outputs (sdk-users examples)
+**/scripts/data/
+**/scripts/outputs/
+**/scripts/*.log
