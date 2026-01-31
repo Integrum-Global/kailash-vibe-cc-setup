@@ -54,3 +54,4 @@ secrets/
 **/scripts/data/
 **/scripts/outputs/
 **/scripts/*.log
+/docs/01-kailash-vibe-cc-internals/
