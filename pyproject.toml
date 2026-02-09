@@ -21,10 +21,10 @@ classifiers = [
 ]
 dependencies = [
     # Kailash SDK (includes: fastapi, uvicorn, pydantic, sqlalchemy, pandas, numpy, requests, pyyaml)
-    "kailash>=0.10.16",
-    "kailash-nexus>=1.1.3",
-    "kailash-dataflow>=0.10.16",
-    "kailash-kaizen>=1.0.1",
+    "kailash>=0.11.0",
+    "kailash-nexus>=1.2.0",
+    "kailash-dataflow>=0.11.0",
+    "kailash-kaizen>=1.1.0",
     # CLI Framework
     "click>=8.0",
     "rich>=13.0.0",

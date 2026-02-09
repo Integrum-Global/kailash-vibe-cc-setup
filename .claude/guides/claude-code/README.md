@@ -135,4 +135,3 @@ The setup includes:
 
 - **[CLAUDE.md](CLAUDE.md)** - Entry point for Claude Code and developers
 - **[01 - What is Claude Code?](01-what-is-claude-code.md)** - Start here if you're new
-
