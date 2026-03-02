@@ -1,0 +1,89 @@
+{
+  "current_state": [
+    {
+      "order_id": "ORDER-1001",
+      "customer_id": "CUST-100",
+      "total_amount": 259.97,
+      "item_count": 2,
+      "status": "shipped",
+      "created_at": "2024-01-15T09:30:00Z",
+      "payments": [
+        {
+          "payment_id": "PAY-10001",
+          "amount": 259.97,
+          "method": "credit_card",
+          "status": "success",
+          "processed_at": "2024-01-15T09:45:00Z"
+        }
+      ],
+      "shipments": [
+        {
+          "tracking_number": "TRACK-100001",
+          "status": "shipped",
+          "shipped_at": "2024-01-15T10:00:00Z"
+        }
+      ],
+      "last_updated": "2024-01-15T10:30:00Z"
+    },
+    {
+      "order_id": "ORDER-1002",
+      "customer_id": "CUST-101",
+      "total_amount": 259.97,
+      "item_count": 2,
+      "status": "shipped",
+      "created_at": "2024-01-15T08:30:00Z",
+      "payments": [
+        {
+          "payment_id": "PAY-10002",
+          "amount": 259.97,
+          "method": "credit_card",
+          "status": "success",
+          "processed_at": "2024-01-15T08:45:00Z"
+        }
+      ],
+      "shipments": [
+        {
+          "tracking_number": "TRACK-100002",
+          "status": "shipped",
+          "shipped_at": "2024-01-15T09:00:00Z"
+        }
+      ],
+      "last_updated": "2024-01-15T10:30:00Z"
+    },
+    {
+      "order_id": "ORDER-1003",
+      "customer_id": "CUST-102",
+      "total_amount": 259.97,
+      "item_count": 2,
+      "status": "paid",
+      "created_at": "2024-01-15T07:30:00Z",
+      "payments": [
+        {
+          "payment_id": "PAY-10003",
+          "amount": 259.97,
+          "method": "credit_card",
+          "status": "success",
+          "processed_at": "2024-01-15T07:45:00Z"
+        }
+      ],
+      "shipments": [],
+      "last_updated": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "summary": {
+    "total_orders": 3,
+    "status_breakdown": {
+      "shipped": 2,
+      "paid": 1
+    },
+    "total_revenue": 779.9100000000001,
+    "processed_at": "2025-06-09T17:08:36.401068"
+  },
+  "state_version": 3,
+  "bug_detected": true,
+  "debug_info": {
+    "input_orders": 3,
+    "input_payments": 3,
+    "input_shipments": 2
+  }
+}

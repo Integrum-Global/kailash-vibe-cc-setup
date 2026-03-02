@@ -1,0 +1,4 @@
+customer_id,name,email,status,total_purchases,lifetime_value,segment,transaction_id,amount,date
+C001,Alice Johnson,alice@example.com,active,1200,1800.0,high,T002,150,2024-02-20
+C003,Carol White,carol@example.com,active,500,750.0,standard,,,
+C002,,,,,,,T004,200,2024-02-01

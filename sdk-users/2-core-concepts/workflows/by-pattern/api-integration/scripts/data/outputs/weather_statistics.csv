@@ -1,0 +1,3 @@
+metric,avg,max,min,unit
+temperature,17.6,27.9,11.7,celsius
+humidity,49.4,64,34,percent

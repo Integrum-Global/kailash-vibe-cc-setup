@@ -1,0 +1,6 @@
+city,temperature_c,temperature_f,humidity,conditions,wind_speed_kmh,timestamp
+London,20.4,68.7,35,Rainy,23.2,2025-06-09T16:26:02.275483
+New York,11.7,53.1,63,Partly Cloudy,26.6,2025-06-09T16:26:02.275488
+Tokyo,15.4,59.7,34,Clear,17.8,2025-06-09T16:26:02.275491
+Sydney,27.9,82.2,51,Cloudy,7.0,2025-06-09T16:26:02.275494
+Paris,12.6,54.7,64,Partly Cloudy,6.1,2025-06-09T16:26:02.275496

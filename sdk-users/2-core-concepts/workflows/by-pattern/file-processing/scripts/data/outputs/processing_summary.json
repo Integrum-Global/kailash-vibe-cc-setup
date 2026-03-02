@@ -1,0 +1,210 @@
+{
+  "processing_summary": {
+    "total_files_processed": 5,
+    "files_by_type": {
+      "csv": 1,
+      "json": 1,
+      "txt": 1,
+      "xml": 1,
+      "markdown": 1
+    },
+    "processing_stats": {
+      "csv": {
+        "total_records": 3,
+        "columns_found": [
+          "customer_id",
+          "name",
+          "email",
+          "status"
+        ]
+      },
+      "json": {
+        "total_transactions": 3,
+        "total_amount": 529.48
+      },
+      "txt": {
+        "total_words": 14,
+        "total_lines": 7
+      },
+      "xml": {
+        "total_words": 51,
+        "total_lines": 42
+      },
+      "markdown": {
+        "total_words": 150,
+        "total_lines": 31
+      }
+    },
+    "successful_files": 5,
+    "failed_files": 0
+  },
+  "detailed_results": [
+    {
+      "file_info": {
+        "path": "data/inputs/customer_data.csv",
+        "name": "customer_data.csv",
+        "type": "csv",
+        "size": 161
+      },
+      "processing_result": {
+        "total_records": 3,
+        "active_customers": 2,
+        "inactive_customers": 1,
+        "email_domains": [
+          "example.com"
+        ],
+        "columns": [
+          "customer_id",
+          "name",
+          "email",
+          "status"
+        ],
+        "sample_records": [
+          {
+            "customer_id": "CUST-001",
+            "name": "John Doe",
+            "email": "john@example.com",
+            "status": "active"
+          },
+          {
+            "customer_id": "CUST-002",
+            "name": "Jane Smith",
+            "email": "jane@example.com",
+            "status": "active"
+          },
+          {
+            "customer_id": "CUST-003",
+            "name": "Bob Johnson",
+            "email": "bob@example.com",
+            "status": "inactive"
+          }
+        ]
+      },
+      "metadata": {
+        "processed_at": "2025-06-09T20:56:11.506220",
+        "processor": "csv_processor"
+      }
+    },
+    {
+      "file_info": {
+        "path": "data/inputs/transaction_log.json",
+        "name": "transaction_log.json",
+        "type": "json",
+        "size": 515
+      },
+      "processing_result": {
+        "data_type": "transaction_log",
+        "transaction_count": 3,
+        "total_amount": 529.48,
+        "average_amount": 176.49,
+        "unique_customers": 2,
+        "customer_ids": [
+          "CUST-002",
+          "CUST-001"
+        ],
+        "metadata": {
+          "version": "1.0",
+          "generated_at": "2024-01-15T10:30:00Z"
+        }
+      },
+      "metadata": {
+        "processed_at": "2025-06-09T20:56:11.508476",
+        "processor": "json_processor"
+      }
+    },
+    {
+      "file_info": {
+        "path": "data/inputs/report_template.txt",
+        "name": "report_template.txt",
+        "type": "txt",
+        "size": 152
+      },
+      "processing_result": {
+        "word_count": 14,
+        "line_count": 7,
+        "character_count": 152,
+        "preview": "Customer Report Template\n\nTotal Customers: {total_customers}\nActive Customers: {active_customers}\nRevenue: {total_revenue}\n\nGenerated on: {report_date}",
+        "placeholders": [
+          "total_customers",
+          "active_customers",
+          "total_revenue",
+          "report_date"
+        ],
+        "placeholder_count": 4
+      },
+      "metadata": {
+        "processed_at": "2025-06-09T20:56:11.510372",
+        "processor": "text_processor"
+      }
+    },
+    {
+      "file_info": {
+        "path": "data/inputs/metadata.xml",
+        "name": "metadata.xml",
+        "type": "xml",
+        "size": 1221
+      },
+      "processing_result": {
+        "word_count": 51,
+        "line_count": 42,
+        "character_count": 1221,
+        "preview": "?xml version=\"1.0\" encoding=\"UTF-8\"?\ndocument_metadata\n    document\n        idDOC-001/id\n        titleCustomer Data Export/title\n        typecsv/type\n        created2024-01-15T08:0...",
+        "unique_tags": [
+          "tag",
+          "created",
+          "?xml version=\"1.0\" encoding=\"UTF-8\"?",
+          "document_metadata",
+          "type",
+          "modified",
+          "id",
+          "author",
+          "title",
+          "tags",
+          "document"
+        ],
+        "tag_count": 11
+      },
+      "metadata": {
+        "processed_at": "2025-06-09T20:56:11.511608",
+        "processor": "text_processor"
+      }
+    },
+    {
+      "file_info": {
+        "path": "data/inputs/README.md",
+        "name": "README.md",
+        "type": "markdown",
+        "size": 1084
+      },
+      "processing_result": {
+        "word_count": 150,
+        "line_count": 31,
+        "character_count": 1084,
+        "preview": "# Document Processing Sample Files\n\nThis directory contains sample files for the document processing workflow.\n\n## File Types\n\n- **CSV Files**: Customer data exports\n- **JSON Files**: Transaction logs...",
+        "headers": [
+          "Document Processing Sample Files",
+          "File Types",
+          "Usage",
+          "Processing Features",
+          "Sample Data"
+        ],
+        "header_count": 5
+      },
+      "metadata": {
+        "processed_at": "2025-06-09T20:56:11.511791",
+        "processor": "text_processor"
+      }
+    }
+  ],
+  "metadata": {
+    "processed_at": "2025-06-09T20:56:11.515827",
+    "workflow_version": "2.0",
+    "processor": "document_processing_workflow"
+  },
+  "recommendations": [
+    "Review inactive customers in CSV files",
+    "Analyze transaction patterns in JSON files",
+    "Update text templates with current data",
+    "Review documentation for accuracy"
+  ]
+}

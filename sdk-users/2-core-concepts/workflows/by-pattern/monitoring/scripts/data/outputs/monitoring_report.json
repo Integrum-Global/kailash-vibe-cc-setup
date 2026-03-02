@@ -1,0 +1,112 @@
+{
+  "monitoring_report": {
+    "executive_summary": {
+      "system_status": "CRITICAL",
+      "status_color": "red",
+      "overall_health": "85.0%",
+      "critical_services_health": "75.0%",
+      "average_response_time": "1250.5ms",
+      "active_alerts": 2,
+      "critical_alerts": 1,
+      "performance_score": "65.0/100",
+      "report_timestamp": "2025-06-09T12:08:06.079106"
+    },
+    "alert_summary": {
+      "total_alerts": 2,
+      "by_severity": {
+        "critical": 1,
+        "warning": 1
+      },
+      "critical_alerts": [
+        {
+          "alert_id": "ALERT-001",
+          "severity": "critical",
+          "service_name": "user-service",
+          "alert_type": "critical_service_down"
+        }
+      ],
+      "major_alerts": [],
+      "warning_alerts": [
+        {
+          "alert_id": "ALERT-002",
+          "severity": "warning",
+          "service_name": "api-gateway",
+          "alert_type": "high_response_time"
+        }
+      ]
+    },
+    "performance_summary": {
+      "availability": {
+        "overall_availability_percentage": 85.0,
+        "critical_availability_percentage": 75.0
+      },
+      "response_times": {
+        "average_ms": 1250.5,
+        "p95_ms": 3000.0
+      },
+      "performance_trends": {
+        "overall_performance_score": 65.0
+      },
+      "service_distribution": {},
+      "service_grades": {}
+    },
+    "action_items": [
+      "IMMEDIATE: Investigate and resolve critical service outages",
+      "IMMEDIATE: Activate incident response procedures",
+      "Monitor critical services every 1 minute until resolved",
+      "Investigate unhealthy services",
+      "URGENT: Critical services are experiencing downtime"
+    ],
+    "detailed_alerts": [
+      {
+        "alert_id": "ALERT-001",
+        "severity": "critical",
+        "service_name": "user-service",
+        "alert_type": "critical_service_down"
+      },
+      {
+        "alert_id": "ALERT-002",
+        "severity": "warning",
+        "service_name": "api-gateway",
+        "alert_type": "high_response_time"
+      }
+    ],
+    "raw_metrics": {
+      "availability_metrics": {
+        "overall_availability_percentage": 85.0,
+        "critical_availability_percentage": 75.0
+      },
+      "response_time_metrics": {
+        "average_ms": 1250.5,
+        "p95_ms": 3000.0
+      },
+      "trends": {
+        "overall_performance_score": 65.0
+      }
+    }
+  },
+  "report_metadata": {
+    "generated_at": "2025-06-09T12:08:06.079106",
+    "report_type": "health_monitoring",
+    "version": "1.0",
+    "bug_detected": true,
+    "data_sources": [
+      "health_collector",
+      "alert_detector",
+      "metrics_calculator"
+    ]
+  },
+  "next_actions": {
+    "immediate_actions": [
+      "IMMEDIATE: Investigate and resolve critical service outages",
+      "IMMEDIATE: Activate incident response procedures"
+    ],
+    "planned_actions": [
+      "Monitor critical services every 1 minute until resolved",
+      "Investigate unhealthy services",
+      "URGENT: Critical services are experiencing downtime"
+    ],
+    "next_report_in": "5 minutes",
+    "escalation_required": true
+  }
+}

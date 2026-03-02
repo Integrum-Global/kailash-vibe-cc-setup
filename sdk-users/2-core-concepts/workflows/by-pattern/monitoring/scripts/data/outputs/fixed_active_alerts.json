@@ -1,0 +1,59 @@
+{
+  "alerts": [
+    {
+      "alert_id": "ALERT-20250609183913-001",
+      "alert_type": "high_response_time",
+      "severity": "warning",
+      "description": "Service response time above threshold",
+      "service_name": "httpbin_service",
+      "service_url": null,
+      "current_status": "healthy",
+      "actual_status_code": null,
+      "actual_response_time_ms": 1200,
+      "error_message": null,
+      "performance_grade": null,
+      "is_critical_service": false,
+      "triggered_at": "2025-06-09T18:39:13.998117",
+      "metadata": {
+        "check_timestamp": null,
+        "alert_source": "real_health_monitoring",
+        "endpoint_type": "public_api",
+        "actual_endpoint": true
+      }
+    }
+  ],
+  "alert_count": 1,
+  "alerts_by_severity": {
+    "warning": [
+      {
+        "alert_id": "ALERT-20250609183913-001",
+        "alert_type": "high_response_time",
+        "severity": "warning",
+        "description": "Service response time above threshold",
+        "service_name": "httpbin_service",
+        "service_url": null,
+        "current_status": "healthy",
+        "actual_status_code": null,
+        "actual_response_time_ms": 1200,
+        "error_message": null,
+        "performance_grade": null,
+        "is_critical_service": false,
+        "triggered_at": "2025-06-09T18:39:13.998117",
+        "metadata": {
+          "check_timestamp": null,
+          "alert_source": "real_health_monitoring",
+          "endpoint_type": "public_api",
+          "actual_endpoint": true
+        }
+      }
+    ]
+  },
+  "severity_counts": {
+    "warning": 1
+  },
+  "has_critical_alerts": false,
+  "has_major_alerts": false,
+  "data_source": "real_endpoints",
+  "bug_detected": true,
+  "detection_timestamp": "2025-06-09T18:39:13.998117"
+}

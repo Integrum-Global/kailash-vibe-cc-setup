@@ -1,0 +1,37 @@
+{
+  "processing_summary": {
+    "total_files_processed": 3,
+    "file_types": [
+      "csv",
+      "json",
+      "txt"
+    ],
+    "processing_time": "2025-06-09T20:41:32.333024",
+    "status": "completed"
+  },
+  "file_summaries": [
+    {
+      "type": "csv",
+      "name": "customer_data.csv",
+      "records": 3,
+      "key_metric": "2 active customers"
+    },
+    {
+      "type": "json",
+      "name": "transaction_log.json",
+      "records": 3,
+      "key_metric": "$529.48 total"
+    },
+    {
+      "type": "txt",
+      "name": "report_template.txt",
+      "records": 1,
+      "key_metric": "4 placeholders"
+    }
+  ],
+  "recommendations": [
+    "CSV data processed successfully - customer records available",
+    "JSON transaction data loaded - ready for analysis",
+    "Text template parsed - placeholders identified"
+  ]
+}

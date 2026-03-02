@@ -1,0 +1,151 @@
+{
+  "security_audit_report": {
+    "executive_dashboard": {
+      "security_posture": "CRITICAL",
+      "posture_color": "red",
+      "overall_compliance": false,
+      "compliance_score": "75.5%",
+      "total_vulnerabilities": 4,
+      "critical_high_vulns": 3,
+      "highest_risk_score": 9.2,
+      "remediation_budget_required": "$45,000",
+      "frameworks_compliant": "1/3",
+      "report_timestamp": "2025-06-09T18:39:14.767533"
+    },
+    "key_findings": [
+      {
+        "type": "security",
+        "severity": "critical",
+        "finding": "3 vulnerabilities require immediate attention",
+        "impact": "High risk of security breach or data compromise",
+        "recommendation": "Prioritize patching of critical and high-risk vulnerabilities"
+      },
+      {
+        "type": "compliance",
+        "severity": "major",
+        "finding": "Non-compliant with: PCI_DSS",
+        "impact": "Regulatory penalties, audit failures, business risk",
+        "recommendation": "Address compliance violations to meet regulatory requirements"
+      }
+    ],
+    "vulnerability_summary": {
+      "total_found": 4,
+      "by_risk_level": {
+        "critical": 1,
+        "high": 1,
+        "medium": 0,
+        "low": 0
+      },
+      "top_vulnerabilities": [
+        {
+          "vulnerability_id": "CVE-2024-0007",
+          "risk_level": "critical",
+          "priority": 1,
+          "remediation_timeline": "immediate",
+          "estimated_cost_usd": 12000
+        },
+        {
+          "vulnerability_id": "CVE-2024-0001",
+          "risk_level": "high",
+          "priority": 2,
+          "remediation_timeline": "1 week",
+          "estimated_cost_usd": 18000
+        }
+      ]
+    },
+    "compliance_summary": {
+      "overall_status": {
+        "is_compliant": false,
+        "average_compliance_score": 75.5,
+        "compliant_frameworks": 1,
+        "non_compliant_frameworks": 2
+      },
+      "framework_details": {
+        "SOC2": {
+          "is_compliant": true,
+          "compliance_score": 85.0,
+          "critical_violations": 0,
+          "high_violations": 1
+        },
+        "PCI_DSS": {
+          "is_compliant": false,
+          "compliance_score": 65.0,
+          "critical_violations": 1,
+          "high_violations": 2
+        }
+      },
+      "next_assessment": "2025-09-07T18:39:14.767533"
+    },
+    "action_plan": {
+      "immediate_actions": [
+        "Address 3 critical/high vulnerabilities",
+        "Activate incident response team for critical findings",
+        "Implement temporary mitigations for external-facing vulnerabilities"
+      ],
+      "short_term_actions": [
+        "Complete vulnerability remediation within defined timelines",
+        "Update security policies and procedures",
+        "Conduct security awareness training"
+      ],
+      "long_term_actions": [
+        "Implement continuous security monitoring",
+        "Establish regular penetration testing schedule",
+        "Enhance security development lifecycle (SDLC)"
+      ],
+      "budget_requirements": {
+        "immediate": 45000,
+        "quarterly": 13500.0,
+        "annual": 67500.0
+      }
+    },
+    "detailed_assessments": {
+      "vulnerabilities": [
+        {
+          "vulnerability_id": "CVE-2024-0007",
+          "risk_level": "critical",
+          "priority": 1,
+          "remediation_timeline": "immediate",
+          "estimated_cost_usd": 12000
+        },
+        {
+          "vulnerability_id": "CVE-2024-0001",
+          "risk_level": "high",
+          "priority": 2,
+          "remediation_timeline": "1 week",
+          "estimated_cost_usd": 18000
+        }
+      ],
+      "compliance": {
+        "SOC2": {
+          "is_compliant": true,
+          "compliance_score": 85.0,
+          "critical_violations": 0,
+          "high_violations": 1
+        },
+        "PCI_DSS": {
+          "is_compliant": false,
+          "compliance_score": 65.0,
+          "critical_violations": 1,
+          "high_violations": 2
+        }
+      }
+    }
+  },
+  "report_metadata": {
+    "generated_at": "2025-06-09T18:39:14.767533",
+    "report_type": "comprehensive_security_audit",
+    "version": "1.0",
+    "bug_detected": true,
+    "next_audit_date": "2025-09-07T18:39:14.767533",
+    "audit_scope": "full_application_infrastructure"
+  },
+  "recommendations": {
+    "priority_1": [
+      "Prioritize patching of critical and high-risk vulnerabilities"
+    ],
+    "priority_2": [
+      "Address compliance violations to meet regulatory requirements"
+    ],
+    "priority_3": []
+  }
+}

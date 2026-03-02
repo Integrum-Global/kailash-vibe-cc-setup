@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "total_products": 4,
+    "in_stock": 3,
+    "out_of_stock": 1,
+    "inventory_value": 20398.77,
+    "average_price": 352.49,
+    "tier_distribution": {
+      "premium": 1,
+      "budget": 2,
+      "standard": 1
+    }
+  },
+  "products": [
+    {
+      "id": 1,
+      "name": "Laptop",
+      "price": 999.99,
+      "stock": 15,
+      "available": true,
+      "tier": "premium"
+    },
+    {
+      "id": 2,
+      "name": "Mouse",
+      "price": 29.99,
+      "stock": 100,
+      "available": true,
+      "tier": "budget"
+    },
+    {
+      "id": 4,
+      "name": "Monitor",
+      "price": 299.99,
+      "stock": 8,
+      "available": true,
+      "tier": "standard"
+    }
+  ],
+  "warnings": [
+    {
+      "id": 3,
+      "name": "Keyboard",
+      "price": 79.99,
+      "stock": 0,
+      "available": false,
+      "tier": "budget"
+    }
+  ],
+  "bug_detected": true,
+  "workaround_applied": true
+}

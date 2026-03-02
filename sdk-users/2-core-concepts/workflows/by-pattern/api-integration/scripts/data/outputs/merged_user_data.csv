@@ -1,0 +1,6 @@
+user_id,username,email,company,post_count
+1,alice,alice@example.com,Tech Corp,10
+2,bob,bob@example.com,Data Inc,5
+3,charlie,charlie@example.com,AI Labs,15
+4,diana,diana@example.com,Cloud Co,8
+5,eve,eve@example.com,Dev House,12

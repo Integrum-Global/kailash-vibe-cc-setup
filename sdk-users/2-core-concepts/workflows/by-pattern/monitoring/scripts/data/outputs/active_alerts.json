@@ -1,0 +1,258 @@
+{
+  "alerts": [
+    {
+      "alert_id": "ALERT-20250609120806-001",
+      "alert_type": "critical_service_down",
+      "severity": "critical",
+      "description": "Critical service is unhealthy",
+      "service_name": "user-service",
+      "service_url": null,
+      "current_status": "unhealthy",
+      "response_time_ms": 3500.0,
+      "error_message": null,
+      "issue_type": "timeout",
+      "is_critical_service": true,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "check_timestamp": null,
+        "alert_source": "health_monitoring"
+      }
+    },
+    {
+      "alert_id": "ALERT-20250609120806-002",
+      "alert_type": "high_response_time",
+      "severity": "warning",
+      "description": "Service response time above threshold",
+      "service_name": "user-service",
+      "service_url": null,
+      "current_status": "unhealthy",
+      "response_time_ms": 3500.0,
+      "error_message": null,
+      "issue_type": "timeout",
+      "is_critical_service": true,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "check_timestamp": null,
+        "alert_source": "health_monitoring"
+      }
+    },
+    {
+      "alert_id": "ALERT-20250609120806-003",
+      "alert_type": "critical_service_down",
+      "severity": "critical",
+      "description": "Critical service is unhealthy",
+      "service_name": "database-primary",
+      "service_url": null,
+      "current_status": "unhealthy",
+      "response_time_ms": 5000.0,
+      "error_message": null,
+      "issue_type": "connection_refused",
+      "is_critical_service": true,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "check_timestamp": null,
+        "alert_source": "health_monitoring"
+      }
+    },
+    {
+      "alert_id": "ALERT-20250609120806-004",
+      "alert_type": "high_response_time",
+      "severity": "warning",
+      "description": "Service response time above threshold",
+      "service_name": "database-primary",
+      "service_url": null,
+      "current_status": "unhealthy",
+      "response_time_ms": 5000.0,
+      "error_message": null,
+      "issue_type": "connection_refused",
+      "is_critical_service": true,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "check_timestamp": null,
+        "alert_source": "health_monitoring"
+      }
+    },
+    {
+      "alert_id": "ALERT-20250609120806-005",
+      "alert_type": "overall_health_low",
+      "severity": "major",
+      "description": "Overall system health below threshold",
+      "service_name": "system_overall",
+      "current_value": 50.0,
+      "threshold": 80,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "system_summary": {
+          "total_services": 4,
+          "healthy_services": 2,
+          "unhealthy_services": 2,
+          "critical_services": 4,
+          "critical_healthy": 2,
+          "critical_unhealthy": 2,
+          "overall_health_percentage": 50.0,
+          "critical_health_percentage": 50.0
+        },
+        "alert_source": "health_monitoring"
+      }
+    },
+    {
+      "alert_id": "ALERT-20250609120806-006",
+      "alert_type": "critical_health_low",
+      "severity": "critical",
+      "description": "Critical services health below threshold",
+      "service_name": "system_overall",
+      "current_value": 50.0,
+      "threshold": 90,
+      "triggered_at": "2025-06-09T12:08:06.076097",
+      "metadata": {
+        "system_summary": {
+          "total_services": 4,
+          "healthy_services": 2,
+          "unhealthy_services": 2,
+          "critical_services": 4,
+          "critical_healthy": 2,
+          "critical_unhealthy": 2,
+          "overall_health_percentage": 50.0,
+          "critical_health_percentage": 50.0
+        },
+        "alert_source": "health_monitoring"
+      }
+    }
+  ],
+  "alert_count": 6,
+  "alerts_by_severity": {
+    "critical": [
+      {
+        "alert_id": "ALERT-20250609120806-001",
+        "alert_type": "critical_service_down",
+        "severity": "critical",
+        "description": "Critical service is unhealthy",
+        "service_name": "user-service",
+        "service_url": null,
+        "current_status": "unhealthy",
+        "response_time_ms": 3500.0,
+        "error_message": null,
+        "issue_type": "timeout",
+        "is_critical_service": true,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "check_timestamp": null,
+          "alert_source": "health_monitoring"
+        }
+      },
+      {
+        "alert_id": "ALERT-20250609120806-003",
+        "alert_type": "critical_service_down",
+        "severity": "critical",
+        "description": "Critical service is unhealthy",
+        "service_name": "database-primary",
+        "service_url": null,
+        "current_status": "unhealthy",
+        "response_time_ms": 5000.0,
+        "error_message": null,
+        "issue_type": "connection_refused",
+        "is_critical_service": true,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "check_timestamp": null,
+          "alert_source": "health_monitoring"
+        }
+      },
+      {
+        "alert_id": "ALERT-20250609120806-006",
+        "alert_type": "critical_health_low",
+        "severity": "critical",
+        "description": "Critical services health below threshold",
+        "service_name": "system_overall",
+        "current_value": 50.0,
+        "threshold": 90,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "system_summary": {
+            "total_services": 4,
+            "healthy_services": 2,
+            "unhealthy_services": 2,
+            "critical_services": 4,
+            "critical_healthy": 2,
+            "critical_unhealthy": 2,
+            "overall_health_percentage": 50.0,
+            "critical_health_percentage": 50.0
+          },
+          "alert_source": "health_monitoring"
+        }
+      }
+    ],
+    "warning": [
+      {
+        "alert_id": "ALERT-20250609120806-002",
+        "alert_type": "high_response_time",
+        "severity": "warning",
+        "description": "Service response time above threshold",
+        "service_name": "user-service",
+        "service_url": null,
+        "current_status": "unhealthy",
+        "response_time_ms": 3500.0,
+        "error_message": null,
+        "issue_type": "timeout",
+        "is_critical_service": true,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "check_timestamp": null,
+          "alert_source": "health_monitoring"
+        }
+      },
+      {
+        "alert_id": "ALERT-20250609120806-004",
+        "alert_type": "high_response_time",
+        "severity": "warning",
+        "description": "Service response time above threshold",
+        "service_name": "database-primary",
+        "service_url": null,
+        "current_status": "unhealthy",
+        "response_time_ms": 5000.0,
+        "error_message": null,
+        "issue_type": "connection_refused",
+        "is_critical_service": true,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "check_timestamp": null,
+          "alert_source": "health_monitoring"
+        }
+      }
+    ],
+    "major": [
+      {
+        "alert_id": "ALERT-20250609120806-005",
+        "alert_type": "overall_health_low",
+        "severity": "major",
+        "description": "Overall system health below threshold",
+        "service_name": "system_overall",
+        "current_value": 50.0,
+        "threshold": 80,
+        "triggered_at": "2025-06-09T12:08:06.076097",
+        "metadata": {
+          "system_summary": {
+            "total_services": 4,
+            "healthy_services": 2,
+            "unhealthy_services": 2,
+            "critical_services": 4,
+            "critical_healthy": 2,
+            "critical_unhealthy": 2,
+            "overall_health_percentage": 50.0,
+            "critical_health_percentage": 50.0
+          },
+          "alert_source": "health_monitoring"
+        }
+      }
+    ]
+  },
+  "severity_counts": {
+    "critical": 3,
+    "warning": 2,
+    "major": 1
+  },
+  "has_critical_alerts": true,
+  "has_major_alerts": true,
+  "bug_detected": true,
+  "detection_timestamp": "2025-06-09T12:08:06.076097"
+}
