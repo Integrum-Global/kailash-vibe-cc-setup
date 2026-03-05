@@ -31,17 +31,19 @@ workspaces/my-saas-app/
   instructions/          # Copied from workspaces/instructions/
 ```
 
-### 2. Follow the phases in sequence
+### 2. Follow the phases using slash commands
 
-Each phase has an instruction file. Go through them in order — do not skip or reorder.
+Each phase has a slash command that loads the instruction template and checks workspace state. No manual copy-paste needed.
 
-| Phase | File                                     | Output                                               | Gate              |
-| ----- | ---------------------------------------- | ---------------------------------------------------- | ----------------- |
-| 01    | `instructions/01-analyze.md`             | `01-analysis/`, `02-plans/`, `03-user-flows/`        | Human review      |
-| 02    | `instructions/02-todos.md`               | `todos/active/`                                      | Human approval    |
-| 03    | `instructions/03-implement.md`           | `src/`, `apps/`, `docs/`                             | All tests passing |
-| 04    | `instructions/04-validate.md`            | `04-validate/`                                       | Red team sign-off |
-| 05    | `instructions/05-create-agent-skills.md` | `.claude/agents/project/`, `.claude/skills/project/` | Human review      |
+| Phase | Command      | Output                                               | Gate              |
+| ----- | ------------ | ---------------------------------------------------- | ----------------- |
+| 01    | `/analyze`   | `01-analysis/`, `02-plans/`, `03-user-flows/`        | Human review      |
+| 02    | `/todos`     | `todos/active/`                                      | Human approval    |
+| 03    | `/implement` | `src/`, `apps/`, `docs/`                             | All tests passing |
+| 04    | `/redteam`   | `04-validate/`                                       | Red team sign-off |
+| 05    | `/codify`    | `.claude/agents/project/`, `.claude/skills/project/` | Human review      |
+
+Additional commands: `/ws` (status dashboard), `/wrapup` (save session notes before ending).
 
 ### 3. Iterate within and between phases
 
@@ -58,3 +60,5 @@ Each phase has an instruction file. Go through them in order — do not skip or 
 **Reference templates are read-only.** `workspaces/instructions/` contains the canonical templates. Each project gets its own copy to customize.
 
 **`.claude/` is infrastructure, not workbench.** The agents, skills, rules, and hooks are the cognitive infrastructure underneath. Do not modify them during project sessions — except for `project/` subdirectories in phase 05.
+
+**Session continuity.** Run `/wrapup` before ending a session to save `.session-notes` in the workspace. The next session automatically detects the workspace and shows progress. If you forget, the system gracefully falls back to filesystem-derived state (todo counts, directory presence).

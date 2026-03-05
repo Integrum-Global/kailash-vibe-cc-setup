@@ -1,5 +1,7 @@
 # From todos to implementation
-## NOTE: Spam this repeatedly until all todos/active have been moved to todos/completed)
+
+## NOTE: Run `/implement` repeatedly until all todos/active have been moved to todos/completed
+
 1. You MUST always use the todo-manager to create the detailed todos FOR EVERY SINGLE TODO in `todos/000-master.md`
    - Review with agents, before implementation.
    - Ensure that both FE and BE detailed todos exist, if applicable
@@ -27,15 +29,15 @@
    - Use ollama or openai (if ollama is too slow)
    - always check .env for api keys and model names to use in development.
      - Always assume that the model names in your memory are outdated and perform a web check on our model names in .env before declaring them invalid.
-6. At the end of each phase, create and update 
+6. At the end of each phase, create and update
    - these docs
-      - `docs` (complete detailed docs capturing every single details of the codebase)
-        - This is the last resort document that agents try and find elusive and extremely deep documentation if agents and skills files can't resolve
-      - `docs/00-authority`
-        - This is the set of authoritative documents that developers and codegen always read first to gain full situational awareness
-        - Ensure you create/update the `README.md` (navigating the authority documents) and the `CLAUDE.md` (preloaded instructions for developers and codegen)
-      - Project agents and skills (do not touch the other agents and skills in .claude/)
-        - `.claude/agents/project` (Claude Code agents following the `.claude/agents/_subagent-guide.md` and `.claude/guides/claude-code/05-the-agent-system.md`)
-        - `.claude/skills/project` (Claude Code skills following the `.claude/guides/claude-code/06-the-skill-system.md`)
+     - `docs` (complete detailed docs capturing every single details of the codebase)
+       - This is the last resort document that agents try and find elusive and extremely deep documentation if agents and skills files can't resolve
+     - `docs/00-authority`
+       - This is the set of authoritative documents that developers and codegen always read first to gain full situational awareness
+       - Ensure you create/update the `README.md` (navigating the authority documents) and the `CLAUDE.md` (preloaded instructions for developers and codegen)
+     - Project agents and skills (do not touch the other agents and skills in .claude/)
+       - `.claude/agents/project` (Claude Code agents following the `.claude/agents/_subagent-guide.md` and `.claude/guides/claude-code/05-the-agent-system.md`)
+       - `.claude/skills/project` (Claude Code skills following the `.claude/guides/claude-code/06-the-skill-system.md`)
    - using as many subdirectories and files as required, and naming them sequentially 00-, 01- for easy referencing.
    - focus on capturing the essence and intent, the 'what it is' and 'how to use it', and not status/progress/reports and other irrelevant information that consumes context unnecessarily.

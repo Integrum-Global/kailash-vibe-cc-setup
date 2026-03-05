@@ -51,6 +51,9 @@ htmlcov/
 *.key
 secrets/
 
+# Workspace session notes (per-session, not versioned)
+**/.session-notes
+
 # Per-project learning data (generated at runtime)
 .claude/learning/
 .claude/rules/learned-instincts.md

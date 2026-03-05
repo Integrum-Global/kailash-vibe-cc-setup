@@ -24,20 +24,20 @@ Vibe coding fails because AI forgets your conventions (amnesia), drifts across p
 ```
 Your Natural Language Request
          |
-  1. Intent       29 Agents          Who should handle this?
+  1. Intent       30 Agents          Who should handle this?
          |
-  2. Context      25 Skills          What does the AI need to know?
+  2. Context      28 Skills          What does the AI need to know?
          |
-  3. Guardrails   8 Rules + 8 Hooks  What must the AI never do?
+  3. Guardrails   9 Rules + 9 Hooks  What must the AI never do?
          |
-  4. Instructions CLAUDE.md + 12 Cmds What should the AI prioritize?
+  4. Instructions CLAUDE.md + 19 Cmds What should the AI prioritize?
          |
   5. Learning     Observe -> Evolve  How does the system improve?
          |
   Production-Ready Code
 ```
 
-### Layer 1: Intent -- 29 Specialized Agents
+### Layer 1: Intent -- 30 Specialized Agents
 
 Each agent is a Markdown file in `.claude/agents/` with a defined role, tools, and model tier. Agents span the full development lifecycle:
 
@@ -52,7 +52,7 @@ Each agent is a Markdown file in `.claude/agents/` with a defined role, tools, a
 
 Analysis agents run on Opus (deep reasoning). Review agents run on Sonnet (fast, cost-efficient).
 
-### Layer 2: Context -- 25 Skill Directories, 100+ Files
+### Layer 2: Context -- 28 Skill Directories, 100+ Files
 
 Progressive disclosure: quick patterns (10-50 lines) -> specific domains (50-250 lines) -> full SDK reference. Located in `.claude/skills/`.
 
@@ -60,29 +60,31 @@ Domains include: Core SDK, DataFlow, Nexus, Kaizen, MCP, cheatsheets, 110+ node 
 
 ### Layer 3: Guardrails -- Defense in Depth
 
-**8 Rules** (`.claude/rules/` -- soft enforcement via AI interpretation):
-No mocking in integration tests. No hardcoded secrets. No stubs/TODOs in production. Conventional commits. Mandatory code review after every change. Security review before every commit.
+**9 Rules** (`.claude/rules/` -- soft enforcement via AI interpretation):
+No mocking in integration tests. No hardcoded secrets. No stubs/TODOs in production. Conventional commits. Mandatory code review after every change. Security review before every commit. E2E god-mode testing. Environment-only API keys.
 
-**8 Hooks** (`scripts/hooks/` -- hard enforcement, deterministic Node.js):
+**9 Hooks** (`scripts/hooks/` -- hard enforcement, deterministic Node.js):
 
-| Hook | What It Does |
-|------|-------------|
-| `session-start.js` | Validates `.env`, detects active framework |
-| `user-prompt-rules-reminder.js` | **Anti-amnesia**: re-injects rules every turn |
-| `validate-bash-command.js` | Blocks destructive commands (`rm -rf /`, fork bombs) |
-| `validate-workflow.js` | Blocks hardcoded models, detects 13 API key patterns |
-| `auto-format.js` | Runs `black`/`prettier` on every write |
-| `pre-compact.js` | Saves state before context compression |
-| `session-end.js` | Persists session stats for learning |
-| `stop.js` | Emergency state save |
+| Hook                            | What It Does                                                  |
+| ------------------------------- | ------------------------------------------------------------- |
+| `session-start.js`              | Validates `.env`, detects active framework + workspace        |
+| `user-prompt-rules-reminder.js` | **Anti-amnesia**: re-injects rules + workspace state per turn |
+| `validate-bash-command.js`      | Blocks destructive commands (`rm -rf /`, fork bombs)          |
+| `validate-workflow.js`          | Blocks hardcoded models, detects 13 API key patterns          |
+| `auto-format.js`                | Runs `black`/`prettier` on every write                        |
+| `pre-compact.js`                | Saves state before context compression + workspace reminder   |
+| `session-end.js`                | Persists session stats for learning                           |
+| `stop.js`                       | Emergency state save + workspace reminder                     |
+| `detect-package-manager.js`     | Detects npm/pnpm/yarn/bun                                     |
 
 Critical rules have 5-8 independent enforcement layers. If any four fail, the fifth catches it.
 
-### Layer 4: Instructions -- CLAUDE.md + 12 Slash Commands
+### Layer 4: Instructions -- CLAUDE.md + 19 Slash Commands
 
 `CLAUDE.md` is auto-loaded every session with framework context, relationship mapping, and directive escalation. Slash commands are context-efficient entry points:
 
-`/sdk` `/db` `/api` `/ai` `/test` `/validate` `/design` `/i-audit` `/i-harden` `/learn` `/evolve` `/checkpoint`
+**Framework**: `/sdk` `/db` `/api` `/ai` `/test` `/validate` `/design` `/i-audit` `/i-harden` `/learn` `/evolve` `/checkpoint`
+**Workspace**: `/analyze` `/todos` `/implement` `/redteam` `/codify` `/ws` `/wrapup`
 
 ### Layer 5: Learning -- Closed Loop Evolution
 
@@ -120,16 +122,20 @@ The `session-start.js` hook validates your environment automatically. Then just 
 
 ```
 .claude/
-  agents/          29 specialist agents (Markdown + YAML frontmatter)
-  skills/          25 domain knowledge directories, 100+ files
-  rules/           8 behavioral constraint files
-  commands/        12 slash command definitions
+  agents/          30 specialist agents (Markdown + YAML frontmatter)
+  skills/          28 domain knowledge directories, 100+ files
+  rules/           9 behavioral constraint files
+  commands/        19 slash command definitions (12 framework + 7 workspace)
   learning/        Observation-instinct-evolution pipeline
 
 scripts/
-  hooks/           8 Node.js lifecycle hooks (deterministic enforcement)
+  hooks/           9 Node.js lifecycle hooks (deterministic enforcement)
   learning/        Learning system scripts
   ci/              CI validation scripts
+
+workspaces/
+  instructions/    5 phase templates (analyze, todos, implement, validate, codify)
+  <project>/       Per-project workspace directories
 
 CLAUDE.md          Root instructions (auto-loaded every session)
 pyproject.toml     Python dependencies

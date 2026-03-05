@@ -4,13 +4,17 @@ Work only within `workspaces/<project-name>/`. Read `.claude/` freely but never 
 
 ## Phase Contract
 
-Follow phases in order. Each phase has a human gate — do not proceed without approval.
+Follow phases in order using slash commands. Each phase has a human gate — do not proceed without approval.
 
-1. **01-analyze** — Research, analyze, plan. Output: `01-analysis/`, `02-plans/`, `03-user-flows/`
-2. **02-todos** — Break plans into todos. Output: `todos/active/`. **Stop for human approval.**
-3. **03-implement** — Build iteratively until all todos complete. Output: `src/`, `apps/`, `docs/`
-4. **04-validate** — Red team with Playwright/Marionette MCP. Feeds back to 03.
-5. **05-create-agent-skills** — Codify project knowledge into `.claude/agents/project/`, `.claude/skills/project/`
+| Phase | Command      | Output                                               | Gate              |
+| ----- | ------------ | ---------------------------------------------------- | ----------------- |
+| 01    | `/analyze`   | `01-analysis/`, `02-plans/`, `03-user-flows/`        | Human review      |
+| 02    | `/todos`     | `todos/active/`                                      | Human approval    |
+| 03    | `/implement` | `src/`, `apps/`, `docs/`                             | All tests passing |
+| 04    | `/redteam`   | `04-validate/`                                       | Red team sign-off |
+| 05    | `/codify`    | `.claude/agents/project/`, `.claude/skills/project/` | Human review      |
+
+Additional: `/ws` (status dashboard), `/wrapup` (save session notes before ending).
 
 ## Modification Protocol
 

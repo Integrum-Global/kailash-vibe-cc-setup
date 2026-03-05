@@ -33,6 +33,24 @@ See `rules/e2e-god-mode.md` and `rules/no-stubs.md` for enforcement details.
 - **Security review** (security-reviewer) before EVERY commit — NO exceptions — see `rules/agents.md` Rule 2
 - **NO MOCKING** in Tier 2/3 tests — use real infrastructure — see `rules/testing.md`
 
+## Workspace Commands
+
+Phase commands replace the manual copy-paste workflow. Each loads the corresponding instruction template and checks workspace state.
+
+| Command      | Phase | Purpose                                            |
+| ------------ | ----- | -------------------------------------------------- |
+| `/analyze`   | 01    | Load analysis phase for current workspace          |
+| `/todos`     | 02    | Load todos phase; stops for human approval         |
+| `/implement` | 03    | Load implementation phase; repeat until todos done |
+| `/redteam`   | 04    | Load validation phase; red team with MCP tools     |
+| `/codify`    | 05    | Load codification phase; create agents & skills    |
+| `/ws`        | —     | Read-only workspace status dashboard               |
+| `/wrapup`    | —     | Write session notes before ending                  |
+
+**Workspace detection**: Hooks automatically detect the active workspace and inject context. `session-start.js` shows workspace status on session start (human-facing). `user-prompt-rules-reminder.js` injects a 1-line `[WORKSPACE]` summary into Claude's context every turn (survives context compression).
+
+**Session continuity**: Run `/wrapup` before ending a session to write `.session-notes`. The next session's startup reads these notes and shows workspace progress automatically.
+
 ## Rules Index
 
 | Concern                               | Rule File                    | Scope                                               |
