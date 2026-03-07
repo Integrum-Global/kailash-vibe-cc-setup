@@ -45,7 +45,7 @@ Skills provide **organized, accessible domain expertise**:
 │   │   02-dataflow   │  │   12-testing    │                  │
 │   │                 │  │                 │                  │
 │   │ • Model patterns│  │ • 3-tier strategy│                 │
-│   │ • CRUD operations│ │ • real infrastructure preferred    │                  │
+│   │ • CRUD operations│ │ • NO MOCKING    │                  │
 │   │ • Bulk processing│ │ • Test fixtures │                  │
 │   │ • Gotchas       │  │ • Coverage      │                  │
 │   └─────────────────┘  └─────────────────┘                  │
@@ -293,12 +293,12 @@ Tier 1: Unit Tests
 └── Individual components
 
 Tier 2: Integration Tests
-├── Real infrastructure preferred
+├── NO MOCKING (mandatory)
 ├── Real databases (SQLite in-memory)
 └── Component interactions
 
 Tier 3: E2E Tests
-├── Real infrastructure preferred
+├── NO MOCKING (mandatory)
 ├── Full system
 └── Real infrastructure
 ```
@@ -343,12 +343,12 @@ Tier 3: E2E Tests
 
 ### 17-gold-standards: Mandatory Practices
 
-**Purpose**: Strongly recommended best practices
+**Purpose**: Non-negotiable best practices
 
 **Key rules**:
 
 - Absolute imports only
-- Real infrastructure recommended for Tier 2-3
+- NO MOCKING in Tier 2-3
 - Primary key named `id`
 - `runtime.execute(workflow.build())`
 
@@ -514,7 +514,7 @@ Skills follow a progressive detail model:
        └───────────┬────────────┘
                    │
        ┌───────────▼────────────┐
-       │   sdk-users/ docs      │  ← Full documentation (unlimited)
+       │   Deep dive skills      │  ← Full documentation (unlimited)
        └────────────────────────┘
 ```
 
@@ -530,7 +530,7 @@ Complex request: "Create user model with multi-tenancy"
 └── Loads SKILL.md + multi-tenancy.md
 
 Deep dive: "Explain DataFlow internals"
-└── Loads SKILL.md + supporting files + sdk-users docs
+└── Loads SKILL.md + all supporting skill files
 ```
 
 ---

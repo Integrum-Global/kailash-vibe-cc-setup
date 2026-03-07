@@ -1506,11 +1506,4 @@ A **unified Agent API** that makes Kaizen the **simplest AI agent framework** wh
 **Status**: READY FOR REVIEW
 
 **Files Referenced**:
-- `kaizen/__init__.py`
-- `kaizen/core/base_agent.py`
-- `kaizen/agents/__init__.py`
-- `kaizen/strategies/__init__.py`
-- `kaizen/tools/__init__.py`
-- `kaizen/memory/__init__.py`
-- `.claude/skills/04-kaizen/README.md`
 - All 30+ skill files in `.claude/skills/04-kaizen/`

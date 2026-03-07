@@ -75,7 +75,7 @@ Complete templates for:
 - **[template-test-integration](template-test-integration.md)** - Integration test template
   - Real database setup
   - Workflow execution testing
-  - real infrastructure policy
+  - NO MOCKING policy
   - Real infrastructure fixtures
   - Resource cleanup
   - Result validation

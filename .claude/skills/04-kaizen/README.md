@@ -70,7 +70,7 @@ Production patterns, enterprise features, tool calling, observability, memory sy
 26. **[kaizen-streaming.md](kaizen-streaming.md)** - Streaming responses, real-time output
 27. **[kaizen-testing-patterns.md](kaizen-testing-patterns.md)** - 3-tier testing, fixtures, standardized tests
 
-**Testing**: All patterns use 3-tier strategy (Unit → Ollama → OpenAI), Real infrastructure recommended for Tiers 2-3
+**Testing**: All patterns use 3-tier strategy (Unit → Ollama → OpenAI), NO MOCKING in Tiers 2-3
 
 ---
 
@@ -130,27 +130,9 @@ Production patterns, enterprise features, tool calling, observability, memory sy
 
 ## Critical References
 
-### Comprehensive Documentation (sdk-users/)
-
-**Core Guides** (`sdk-users/apps/kaizen/docs/guides/`):
-- **[BaseAgent Architecture](../../../sdk-users/apps/kaizen/docs/guides/baseagent-architecture.md)** - Complete unified agent system (~600 lines)
-- **[Multi-Agent Coordination](../../../sdk-users/apps/kaizen/docs/guides/multi-agent-coordination.md)** - Google A2A protocol, 5 patterns (~600 lines)
-- **[Signature Programming](../../../sdk-users/apps/kaizen/docs/guides/signature-programming.md)** - Complete signature system
-- **[Control Protocol Tutorial](../../../sdk-users/apps/kaizen/docs/guides/control-protocol-tutorial.md)** - Bidirectional communication (13KB)
-- **[Integration Patterns](../../../sdk-users/apps/kaizen/docs/guides/integration-patterns.md)** - DataFlow, Nexus, MCP
-
-**Reference Docs** (`sdk-users/apps/kaizen/docs/reference/`):
-- **[API Reference](../../../sdk-users/apps/kaizen/docs/reference/api-reference.md)** - Complete API (351 lines)
-- **[Control Protocol API](../../../sdk-users/apps/kaizen/docs/reference/control-protocol-api.md)** - Full protocol reference (497 lines)
-- **[Memory Patterns Guide](../../../sdk-users/apps/kaizen/docs/reference/memory-patterns-guide.md)** - Memory usage (1,193 lines)
-- **[Strategy Selection Guide](../../../sdk-users/apps/kaizen/docs/reference/strategy-selection-guide.md)** - Strategy choice (1,296 lines)
-- **[Configuration Guide](../../../sdk-users/apps/kaizen/docs/reference/configuration.md)** - All config options
-- **[Troubleshooting](../../../sdk-users/apps/kaizen/docs/reference/troubleshooting.md)** - Common issues
 
 ### Quick References
 - **Specialist Agent**: `.claude/agents/frameworks/kaizen-specialist.md` (comprehensive reference table)
-- **README**: `sdk-users/apps/kaizen/README.md`
-- **CLAUDE.md**: `sdk-users/apps/kaizen/CLAUDE.md` (quick start)
 - **Examples**: `kaizen/examples/` (35+ working examples)
 
 ### Key Content Sources
@@ -158,7 +140,7 @@ Production patterns, enterprise features, tool calling, observability, memory sy
 - **A2A Protocol**: kaizen-specialist.md lines 115-165
 - **UX Improvements**: kaizen-specialist.md lines 249-298
 - **Quickstart Template**: kaizen-specialist.md lines 489-520
-- **Test Fixtures**: `kailash-kaizen/tests/conftest.py`
+- **Test Fixtures**: `kaizen/tests/conftest.py`
 
 ---
 
@@ -246,7 +228,7 @@ print(result['answer'])          # Key is 'answer', NOT 'response'
 - ❌ Use 'prompt' parameter with VisionAgent (use 'question')
 - ❌ Pass base64 strings to Ollama (use file paths)
 - ❌ Access 'response' key from VisionAgent (use 'answer')
-- ❌ Skip real infrastructure testing (real infrastructure recommended for Tiers 2-3)
+- ❌ Skip real infrastructure testing (NO MOCKING in Tiers 2-3)
 
 ---
 

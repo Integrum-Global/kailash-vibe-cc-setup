@@ -61,7 +61,10 @@ def __del__(self, _warnings=warnings):
         _warnings.warn("Resource not closed", ResourceWarning, stacklevel=1)
 ```
 
-This pattern is used by DataFlow transaction classes and Core SDK async nodes internally.
+### Where this applies in Kailash
+
+| Location                                                           | Class                         | Pattern                                                                    |
+| ------------------------------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------- |
 
 ## 2. Double-Check Locking for asyncio
 
@@ -103,7 +106,10 @@ Key invariants:
 - **Re-check** inside lock to prevent double initialization
 - **`_closed` guard** at both levels to prevent use-after-close races
 
-This pattern is used by Kaizen memory tiers (`WarmMemoryTier`, `ColdMemoryTier`) internally.
+### Where this applies in Kailash
+
+| Location                                                    | Class                              |
+| ----------------------------------------------------------- | ---------------------------------- |
 
 ## 3. Pool Closed-State Guards
 
@@ -142,7 +148,10 @@ async def acquire_write(self):
         self._write_lock.release()
 ```
 
-This pattern is used by `AsyncSQLitePool.acquire_read()` and `acquire_write()` internally.
+### Where this applies in Kailash
+
+| Location                               | Class                                               |
+| -------------------------------------- | --------------------------------------------------- |
 
 ## 4. Memory Database URI Detection
 
@@ -189,7 +198,6 @@ class TestNoDirectAiosqliteConnect:
 
     def test_no_bare_aiosqlite_connect(self):
         violations = []
-        for py in Path("src").rglob("*.py"):
             if py.name in self._ALLOWED_FILES:
                 continue
             text = py.read_text()
@@ -210,7 +218,11 @@ class TestNoDirectAiosqliteConnect:
 - Blocking hardcoded secrets (`api_key = "sk-"` patterns)
 - Ensuring parameterized queries (no f-string SQL)
 
-Use this pattern in your own projects to enforce architectural boundaries.
+### Where this applies in Kailash
+
+| Location                               | Test                           |
+| -------------------------------------- | ------------------------------ |
+| `tests/unit/test_sqlite_invariants.py` | `TestNoDirectAiosqliteConnect` |
 
 ## 6. Transaction Bypass in Adapters
 

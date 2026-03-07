@@ -1,13 +1,10 @@
-# Test Organization (Real Infrastructure Preferred)
+# Test Organization (NO MOCKING)
 
-Test organization and the real infrastructure policy for Kailash SDK testing.
+Test organization and the NO MOCKING policy for Kailash SDK testing.
 
-## Source Documentation
-- [`sdk-users/3-development/testing/test-organization-policy.md`](../../../sdk-users/3-development/testing/test-organization-policy.md)
+## NO MOCKING Policy (CRITICAL)
 
-## Real Infrastructure Policy (CRITICAL)
-
-### Why Is Real Infrastructure Preferred?
+### Why NO MOCKING?
 - Mocks hide real integration issues
 - Real infrastructure catches actual bugs
 - Production-like testing prevents surprises
@@ -24,7 +21,7 @@ Test organization and the real infrastructure policy for Kailash SDK testing.
 **Tier 2: Integration Tests**
 - Use real Docker services (PostgreSQL, Redis, Ollama)
 - Test with LocalRuntime and AsyncLocalRuntime
-- Real infrastructure preferred over mocking databases or infrastructure
+- NO MOCKING of databases or infrastructure
 
 **Tier 3: E2E Tests**
 - Use real APIs (test endpoints, staging environments)
@@ -52,7 +49,7 @@ tests/
     └── docker-compose.test.yml
 ```
 
-## Real Infrastructure Examples
+## NO MOCKING Examples
 
 ### Wrong: Using Mocks in Integration Tests
 ```python
@@ -97,7 +94,7 @@ import pytest
 
 @pytest.fixture
 def postgres_db():
-    """Real PostgreSQL database from Docker - real infrastructure preferred."""
+    """Real PostgreSQL database from Docker - NO MOCKING."""
     conn_string = get_postgres_connection_string()
     # Setup test schema
     yield conn_string
@@ -208,7 +205,7 @@ pytest -m "e2e"
 
 ## Critical Rules
 
-1. **Real infrastructure recommended for Tiers 2-3** - Use real Docker services via LocalRuntime/AsyncLocalRuntime
+1. **NO MOCKING in Tiers 2-3** - Use real Docker services via LocalRuntime/AsyncLocalRuntime
 2. **Use real databases** - PostgreSQL, Redis from Docker
 3. **Use real APIs** - Docker mock-api service
 4. **Test both runtimes** - Parametrize tests for LocalRuntime and AsyncLocalRuntime
@@ -228,4 +225,4 @@ Use `testing-specialist` subagent when:
 - Test structure guidance required
 - CI/CD integration issues
 
-<!-- Trigger Keywords: test organization, real infrastructure preferred, 3-tier testing, test structure, real infrastructure -->
+<!-- Trigger Keywords: test organization, NO MOCKING, 3-tier testing, test structure, real infrastructure -->

@@ -181,9 +181,7 @@ workflow.add_node("UserUpdateNode", "update", {
 - **Inspector** (v0.8.0+): Workflow introspection and debugging
 - **PostgreSQL Native Arrays** (v0.8.0+): 2-10x faster with TEXT[], INTEGER[], REAL[]
 - **Centralized Logging** (v0.12.1): Sensitive data masking in logs
-- **Improved Type Handling** (v0.12.1): Better model field type processing
-- **Workflow Integration** (v0.12.1): Workflow binding utility
-- **Multi-Tenant Context** (v0.12.1): `TenantContextSwitch` for tenant-scoped operations
+- **TenantContextSwitch** (v0.12.1): Multi-tenant context management
 - **Trust-Aware Features** (v0.12.1): Signed audit records, trust-aware queries and multi-tenancy
 - **Async Transaction Nodes** (v0.12.1): Transaction nodes are AsyncNode subclasses; use `async_run()` instead of `run()`
 - **Auto-Wired Multi-Tenancy** (v0.12.1): QueryInterceptor hooks into 8 SQL execution points for automatic tenant filtering
@@ -249,7 +247,7 @@ DataFlow includes an 8-component enterprise migration system. See [`dataflow-ent
 - Manually set `created_at` or `updated_at` fields
 - Instantiate models directly (`User()`)
 - Use `{{}}` template syntax (use `${}`)
-- Prefer mocking over real infrastructure in Tier 2-3 tests
+- Use mocking in Tier 2-3 tests
 - Skip risk assessment for HIGH/CRITICAL migrations
 - Execute schema changes without dependency analysis
 
@@ -257,8 +255,8 @@ DataFlow includes an 8-component enterprise migration system. See [`dataflow-ent
 
 ### Primary Documentation
 
-- [DataFlow README](../../sdk-users/apps/dataflow/README.md)
-- [Complete Documentation](../../sdk-users/apps/dataflow/docs/)
+- [DataFlow Skills](../../skills/02-dataflow/SKILL.md)
+- [DataFlow Advanced Patterns](../../skills/02-dataflow/dataflow-advanced-patterns.md)
 
 ### Nexus Integration (v0.12.1)
 
@@ -309,6 +307,6 @@ See: [`dataflow-nexus-integration`](../../skills/02-dataflow/dataflow-nexus-inte
 
 When this guidance is insufficient, consult:
 
-- `sdk-users/apps/dataflow/CLAUDE.md` - Complete DataFlow guide
-- `sdk-users/apps/dataflow/docs/` - Comprehensive documentation
+- `.claude/skills/02-dataflow/` - Complete DataFlow skills directory
+- `.claude/skills/02-dataflow/dataflow-advanced-patterns.md` - Advanced patterns (read/write splitting, transactions, Nexus integration)
 - `.claude/skills/03-nexus/nexus-dataflow-integration.md` - Integration patterns

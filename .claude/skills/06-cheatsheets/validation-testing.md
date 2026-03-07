@@ -29,7 +29,6 @@ from kailash.runtime.local import LocalRuntime
 workflow = WorkflowBuilder()
 
 # See source documentation for specific node types and parameters
-# Reference: sdk-users/2-core-concepts/cheatsheet/validation-testing.md
 
 runtime = LocalRuntime()
 results, run_id = runtime.execute(workflow.build())
@@ -39,7 +38,7 @@ results, run_id = runtime.execute(workflow.build())
 ## Common Use Cases
 
 - **3-Tier Testing Strategy**: Unit tests (node logic), Integration tests (multi-node flows), End-to-end (full workflows)
-- **Real Infrastructure Testing**: real infrastructure policy - test against actual databases, APIs, LLMs for production confidence
+- **Real Infrastructure Testing**: NO MOCKING policy - test against actual databases, APIs, LLMs for production confidence
 - **Cyclic Workflow Testing**: Validate cycle limits, state persistence, termination conditions, memory leaks
 - **Error Scenario Testing**: Test retry logic, fallback paths, compensation actions, timeout handling
 - **Performance Testing**: Load testing, stress testing, benchmark key workflows under production-like conditions
@@ -60,7 +59,6 @@ Use specialized subagents when:
 ## Documentation References
 
 ### Primary Sources
-- [`sdk-users/2-core-concepts/cheatsheet/`](../../../sdk-users/2-core-concepts/cheatsheet/)
 
 ## Quick Tips
 

@@ -2,9 +2,6 @@
 
 Testing strategies for Kailash SDK including 3-tier testing, runtime testing patterns, and quality assurance.
 
-## Source Documentation
-- [`sdk-users/3-development/testing/TESTING_BEST_PRACTICES.md`](../../../sdk-users/3-development/testing/TESTING_BEST_PRACTICES.md)
-
 ## 3-Tier Testing Strategy
 
 ### Tier 1: Unit Tests
@@ -32,7 +29,7 @@ def test_workflow_creation():
     assert results["process"]["result"]["value"] == 20
 ```
 
-### Tier 2: Integration Tests (real infrastructure preferred)
+### Tier 2: Integration Tests (NO MOCKING)
 - Test multi-node workflows with real infrastructure
 - Use real Docker services (PostgreSQL, Redis, Ollama)
 - Test both LocalRuntime and AsyncLocalRuntime
@@ -44,7 +41,7 @@ from kailash.runtime import LocalRuntime
 from tests.utils.docker_config import get_postgres_connection_string
 
 def test_database_workflow():
-    """Test with real PostgreSQL - real infrastructure preferred."""
+    """Test with real PostgreSQL - NO MOCKS."""
     conn_string = get_postgres_connection_string()
 
     workflow = WorkflowBuilder()
@@ -221,9 +218,9 @@ pytest tests/e2e/
 
 ## Critical Testing Policies
 
-### 1. Real infrastructure recommended for Tiers 2-3
+### 1. NO MOCKING in Tiers 2-3
 ```python
-# ❌ Avoid in integration/e2e tests
+# ❌ NEVER in integration/e2e tests
 from unittest.mock import patch
 
 @patch('requests.get')
@@ -237,9 +234,9 @@ def test_api_integration():
     assert response.status_code == 200
 ```
 
-### 2. Avoid Skipped Tests
+### 2. Zero Skip Tolerance
 ```python
-# ❌ Avoid skipping tests
+# ❌ NEVER skip tests
 @pytest.mark.skip("Redis not available")
 def test_redis_operations():
     pass

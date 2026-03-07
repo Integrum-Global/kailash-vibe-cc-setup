@@ -109,8 +109,6 @@ Each `@db.model` class generates:
 
 ### Troubleshooting
 
-- **[create-vs-update guide](../../../sdk-users/apps/dataflow/guides/create-vs-update.md)** - CreateNode vs UpdateNode
-- **[top-10-errors](../../../sdk-users/apps/dataflow/troubleshooting/top-10-errors.md)** - Quick fix for 90% of issues
 - **[dataflow-gotchas](dataflow-gotchas.md)** - Common pitfalls
 
 ## Database Support Matrix
@@ -179,5 +177,5 @@ Use DataFlow when you need to:
 For DataFlow-specific questions, invoke:
 
 - `dataflow-specialist` - DataFlow implementation and patterns
-- `testing-specialist` - DataFlow testing strategies (real infrastructure policy)
+- `testing-specialist` - DataFlow testing strategies (NO MOCKING policy)
 - `framework-advisor` - Choose between Core SDK and DataFlow

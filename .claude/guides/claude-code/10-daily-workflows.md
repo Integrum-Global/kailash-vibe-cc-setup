@@ -123,7 +123,7 @@ from dataflow import DataFlow
 
 @pytest.fixture
 def db():
-    # Real database - real infrastructure preferred
+    # Real database - NO MOCKING
     dataflow = DataFlow("sqlite:///:memory:")
     dataflow.create_tables()
     yield dataflow
@@ -139,7 +139,7 @@ def test_user_registration(db):
     assert result.verified == False
 ```
 
-[validate-workflow hook: Verified - real infrastructure used]
+[validate-workflow hook: Verified - no mocking detected]
 
 ```
 
@@ -335,7 +335,7 @@ Test organization:
 tests/
 ├── unit/ # Tier 1 - Mocking allowed
 │ └── test_utils.py
-├── integration/ # Tier 2 - real infrastructure preferred
+├── integration/ # Tier 2 - NO MOCKING
 │ └── test_user.py
 └── e2e/ # Tier 3 - Full system
 └── test_registration_flow.py
@@ -367,7 +367,7 @@ src/workflows/auth.py:
 ⚠️ Line 67: Consider adding rate limiting
 
 tests/integration/test_auth.py:
-✅ Real infrastructure used
+✅ No mocking detected
 ✅ Real database used
 ⚠️ Missing test for invalid token case
 
@@ -642,7 +642,7 @@ No new components evolved (thresholds not met).
 | Break into tasks | `/todos` | `todos/active/` (stops for human approval) |
 | Build | `/implement` (repeat) | `src/`, `apps/`, move todos to `completed/` |
 | Validate | `/redteam` | `04-validate/` (feeds gaps back to `/implement`) |
-| Capture knowledge | `/codify` | `.claude/agents/project/`, `.claude/skills/project/` |
+| Capture knowledge | `/codify` | Updates existing agents and skills in `.claude/` |
 | Check status | `/ws` | Dashboard with phase, todos, recent activity |
 | End session | `/wrapup` | `.session-notes` in workspace root |
 
@@ -656,11 +656,11 @@ No new components evolved (thresholds not met).
 
 2. **Bugs follow a flow** - Reproduce → Investigate → Fix → Test → Verify
 
-3. **Tests are real** - real infrastructure preferred in integration and E2E
+3. **Tests are real** - NO MOCKING in integration and E2E
 
 4. **Reviews are automatic** - Claude delegates to reviewers
 
-5. **Security is recommended** - Strongly encouraged before commit
+5. **Security is mandatory** - Always before commit
 
 6. **Learning is continuous** - Checkpoint and evolve regularly
 

@@ -132,6 +132,5 @@ def run(self, **kwargs):
 
 ## Documentation
 
-- **Custom Nodes**: See Kailash SDK custom node development guide
 
 <!-- Trigger Keywords: create custom node, custom node standard, node development, custom node gold standard -->

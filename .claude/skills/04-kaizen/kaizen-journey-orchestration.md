@@ -289,7 +289,6 @@ kaizen/examples/journey/healthcare_referral/
 
 Run the demo:
 ```bash
-cd kailash-kaizen
 python -m examples.journey.healthcare_referral.main --mode demo
 ```
 

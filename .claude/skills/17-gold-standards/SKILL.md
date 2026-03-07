@@ -1,6 +1,6 @@
 ---
 name: gold-standards
-description: "Mandatory best practices and gold standards for Kailash SDK development including absolute imports, parameter passing, error handling, testing policies (Real infrastructure recommended for Tiers 2-3), workflow design, custom node development, security, documentation, and test creation. Use when asking about 'best practices', 'standards', 'gold standards', 'mandatory rules', 'required patterns', 'absolute imports', 'real infrastructure preferred', 'testing policy', 'error handling standards', 'security best practices', 'documentation standards', or 'workflow design standards'."
+description: "Mandatory best practices and gold standards for Kailash SDK development including absolute imports, parameter passing, error handling, testing policies (NO MOCKING in Tiers 2-3), workflow design, custom node development, security, documentation, and test creation. Use when asking about 'best practices', 'standards', 'gold standards', 'mandatory rules', 'required patterns', 'absolute imports', 'NO MOCKING', 'testing policy', 'error handling standards', 'security best practices', 'documentation standards', or 'workflow design standards'."
 ---
 
 # Kailash Gold Standards - Mandatory Best Practices
@@ -13,7 +13,7 @@ Gold standards are **mandatory** practices for:
 - Absolute imports (no relative imports)
 - Parameter passing patterns
 - Error handling strategies
-- Testing policies (Real infrastructure recommended for Tiers 2-3)
+- Testing policies (NO MOCKING in Tiers 2-3)
 - Workflow design principles
 - Custom node development
 - Security requirements
@@ -26,13 +26,15 @@ Gold standards are **mandatory** practices for:
 
 ### Code Organization
 
-#### Absolute Imports- **[gold-absolute-imports](gold-absolute-imports.md)** - Absolute import requirement
+#### Absolute Imports (MANDATORY)
+- **[gold-absolute-imports](gold-absolute-imports.md)** - Absolute import requirement
   - **Rule**: ALWAYS use absolute imports, NEVER relative
   - **Reason**: Prevents import errors, enables refactoring
   - **Pattern**: `from kailash.workflow.builder import WorkflowBuilder`
   - **Never**: `from ..workflow import builder`
 
-#### Parameter Passing- **[gold-parameter-passing](gold-parameter-passing.md)** - Parameter standards
+#### Parameter Passing (MANDATORY)
+- **[gold-parameter-passing](gold-parameter-passing.md)** - Parameter standards
   - **Rule**: Use 4-parameter connection format
   - **Pattern**: `workflow.add_connection(source_id, source_param, target_id, target_param)`
   - **Rule**: Access results with dict pattern
@@ -41,20 +43,22 @@ Gold standards are **mandatory** practices for:
 
 ### Testing Standards
 
-#### Real Infrastructure Policy
-- **[gold-mocking-policy](gold-mocking-policy.md)** - Real infrastructure recommended for Tiers 2-3
-  - **Guideline**: Prefer real infrastructure in integration (Tier 2) and E2E (Tier 3) tests
+#### NO MOCKING Policy (MANDATORY)
+- **[gold-mocking-policy](gold-mocking-policy.md)** - NO MOCKING in Tiers 2-3
+  - **Rule**: NO mocking in integration (Tier 2) or E2E (Tier 3) tests
   - **Reason**: Mocking hides real-world issues
-  - **Recommended**: Use real databases, APIs, infrastructure where practical
-  - **Mocking permitted**: When real infrastructure is impractical
+  - **Required**: Use real databases, APIs, infrastructure
+  - **Allowed**: Mocking ONLY in Tier 1 unit tests
 
-#### Testing Standards- **[gold-testing](gold-testing.md)** - Testing requirements
+#### Testing Standards (MANDATORY)
+- **[gold-testing](gold-testing.md)** - Testing requirements
   - **Rule**: Follow 3-tier strategy (Unit, Integration, E2E)
   - **Rule**: Tiers 2-3 use real infrastructure
   - **Rule**: All tests must clean up resources
   - **Rule**: Tests must be deterministic
 
-#### Test Creation- **[gold-test-creation](gold-test-creation.md)** - Test creation standards
+#### Test Creation (MANDATORY)
+- **[gold-test-creation](gold-test-creation.md)** - Test creation standards
   - **Rule**: Write tests BEFORE implementation (TDD)
   - **Rule**: One assertion focus per test
   - **Rule**: Use AAA pattern (Arrange, Act, Assert)
@@ -62,7 +66,8 @@ Gold standards are **mandatory** practices for:
 
 ### Error Handling
 
-#### Error Handling- **[gold-error-handling](gold-error-handling.md)** - Error handling requirements
+#### Error Handling (MANDATORY)
+- **[gold-error-handling](gold-error-handling.md)** - Error handling requirements
   - **Rule**: Always handle errors explicitly
   - **Rule**: Never swallow exceptions silently
   - **Rule**: Provide actionable error messages
@@ -71,14 +76,16 @@ Gold standards are **mandatory** practices for:
 
 ### Workflow & Node Design
 
-#### Workflow Design- **[gold-workflow-design](gold-workflow-design.md)** - Workflow standards
+#### Workflow Design (MANDATORY)
+- **[gold-workflow-design](gold-workflow-design.md)** - Workflow standards
   - **Rule**: Always call `.build()` before execution
   - **Pattern**: `runtime.execute(workflow.build())`
   - **Rule**: Use string-based node API
   - **Rule**: Validate inputs before processing
   - **Rule**: Single responsibility per workflow
 
-#### Custom Node Development- **[gold-custom-nodes](gold-custom-nodes.md)** - Custom node standards
+#### Custom Node Development (MANDATORY)
+- **[gold-custom-nodes](gold-custom-nodes.md)** - Custom node standards
   - **Rule**: Extend BaseNode
   - **Rule**: Validate all inputs
   - **Rule**: Handle errors gracefully
@@ -87,7 +94,8 @@ Gold standards are **mandatory** practices for:
 
 ### Security & Documentation
 
-#### Security- **[gold-security](gold-security.md)** - Security requirements
+#### Security (MANDATORY)
+- **[gold-security](gold-security.md)** - Security requirements
   - **Rule**: NEVER hardcode secrets
   - **Rule**: Use environment variables for credentials
   - **Rule**: Validate all user inputs
@@ -95,7 +103,8 @@ Gold standards are **mandatory** practices for:
   - **Rule**: Prevent code injection
   - **Rule**: Use HTTPS for API calls
 
-#### Documentation- **[gold-documentation](gold-documentation.md)** - Documentation standards
+#### Documentation (MANDATORY)
+- **[gold-documentation](gold-documentation.md)** - Documentation standards
   - **Rule**: Document all public APIs
   - **Rule**: Include code examples
   - **Rule**: Keep docs updated with code
@@ -117,7 +126,7 @@ from ..workflow.builder import WorkflowBuilder
 from .runtime import LocalRuntime
 ```
 
-### 2. Real infrastructure recommended for Tiers 2-3
+### 2. NO MOCKING in Tiers 2-3
 ```python
 # ✅ CORRECT (Gold Standard - Tier 2)
 def test_dataflow_crud(db: DataFlow):  # Real database
@@ -129,7 +138,7 @@ def test_dataflow_crud(db: DataFlow):  # Real database
 # ❌ WRONG (Violates Gold Standard)
 def test_dataflow_crud():
     """Test with mocked database."""
-    db = Mock(spec=DataFlow)  # Real infrastructure recommended for Tier 2!
+    db = Mock(spec=DataFlow)  # NO MOCKING in Tier 2!
     db.create_workflow.return_value = mock_workflow
 ```
 
@@ -213,7 +222,7 @@ except:  # Too broad, swallows errors
 - [ ] No hardcoded secrets
 - [ ] Error handling present
 - [ ] Tests written (TDD)
-- [ ] Real infrastructure preferred in Tier 2-3 tests
+- [ ] No mocking in Tier 2-3 tests
 - [ ] Documentation updated
 
 ### Before Every PR
@@ -244,7 +253,7 @@ python -m kailash.validation.gold_standards check-security
 
 ### Code Review Focus
 - Check absolute imports
-- Verify real infrastructure policy
+- Verify NO MOCKING policy
 - Validate connection format
 - Check error handling
 - Verify TDD approach
@@ -256,7 +265,7 @@ python -m kailash.validation.gold_standards check-security
 
 **Absolute Imports**: Prevent import errors during refactoring
 
-**Real infrastructure preferred**: Catch real database issues, API timeouts, race conditions
+**NO MOCKING**: Catch real database issues, API timeouts, race conditions
 
 **4-Parameter Connections**: Prevent wrong data routing
 
@@ -296,8 +305,8 @@ results = runtime.execute(workflow)  # WILL FAIL
 def db():
     return DataFlow("sqlite:///:memory:")  # Real DB
 
-# ❌ DISCOURAGED in Tier 2-3: Mocking
-@patch('module.function')  # Prefer real infrastructure
+# ❌ WRONG in Tier 2-3: Mocking
+@patch('module.function')  # PROHIBITED
 ```
 
 ## When to Use This Skill

@@ -240,4 +240,3 @@ async def create_order(items: list) -> dict: ...
 - `nexus/docs/handler-support.md` - Complete handler guide
 - `nexus/docs/migration/handler-migration-guide.md` - Migration guide (5 patterns)
 - `nexus/docs/migration/real-project-patterns.md` - Real project patterns (8 patterns)
-- `kailash/nodes/handler.py` - HandlerNode implementation

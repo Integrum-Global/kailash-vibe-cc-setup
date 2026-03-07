@@ -200,8 +200,6 @@ app = Nexus(preset="saas", cors_origins=["https://app.example.com"])
 
 ### Key Files
 
-- `kailash/nodes/handler.py` - HandlerNode implementation
-- `nexus/core.py` - handler() decorator, register_handler()
 - `tests/unit/nodes/test_handler_node.py` - 22 SDK unit tests
 - `nexus/tests/unit/test_handler_registration.py` - 16 Nexus unit tests
 - `nexus/tests/integration/test_handler_execution.py` - 7 integration tests
@@ -491,9 +489,9 @@ PEP 563 turns type annotations into strings, preventing FastAPI from recognizing
 
 When this guidance is insufficient, consult:
 
-- `sdk-users/apps/nexus/CLAUDE.md` - Complete Nexus guide
+- `.claude/skills/03-nexus/` - Complete Nexus skills directory
 - `.claude/skills/03-nexus/nexus-dataflow-integration.md` - Integration patterns
-- `sdk-users/apps/nexus/docs/troubleshooting/input-mapping-guide.md` - Input mapping
+- `.claude/skills/03-nexus/nexus-troubleshooting.md` - Troubleshooting and input mapping
 
 ---
 

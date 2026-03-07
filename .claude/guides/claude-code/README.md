@@ -29,11 +29,11 @@ Then come back and read the rest when you have time.
 
 ### Part 1: Foundations
 
-| Guide                                                                   | Description                                                                                                                             | Reading Time |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| **[01 - What is Claude Code?](01-what-is-claude-code.md)**              | Understanding Claude Code from first principles. What it is, what it isn't, and why it's different from other AI tools.                 | 10-15 min    |
+| Guide                                                                   | Description                                                                                                                                   | Reading Time |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| **[01 - What is Claude Code?](01-what-is-claude-code.md)**              | Understanding Claude Code from first principles. What it is, what it isn't, and why it's different from other AI tools.                       | 10-15 min    |
 | **[02 - Understanding This Setup](02-understanding-this-setup.md)**     | A deep dive into the Kailash COC Claude (Python) architecture. Why we built it, what problems it solves, and how all the pieces fit together. | 20-25 min    |
-| **[03 - Installation and First Run](03-installation-and-first-run.md)** | Step-by-step installation instructions with explanations of what's happening at each step. Your first conversation with Claude Code.    | 15-20 min    |
+| **[03 - Installation and First Run](03-installation-and-first-run.md)** | Step-by-step installation instructions with explanations of what's happening at each step. Your first conversation with Claude Code.          | 15-20 min    |
 
 ### Part 2: Core Systems
 

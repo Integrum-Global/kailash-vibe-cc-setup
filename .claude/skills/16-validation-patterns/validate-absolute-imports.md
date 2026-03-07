@@ -42,6 +42,5 @@ grep -r "from \." kailash/ --include="*.py" | grep -v "# type:"
 
 ## Documentation
 
-- **Import Standards**: See Kailash SDK code standards documentation
 
 <!-- Trigger Keywords: check imports, import validation, absolute imports, relative imports -->

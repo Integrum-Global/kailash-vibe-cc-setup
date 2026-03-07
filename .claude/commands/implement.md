@@ -91,8 +91,8 @@ Deploy these agents as a team for each implementation cycle:
 **Core team (always):**
 
 - **tdd-implementer** — Test-first development, red-green-refactor
-- **testing-specialist** — 3-tier test strategy, Real infrastructure recommended for Tier 2-3
-- **intermediate-reviewer** — Code review after every file change (recommended)
+- **testing-specialist** — 3-tier test strategy, NO MOCKING in Tier 2-3
+- **intermediate-reviewer** — Code review after every file change (MANDATORY)
 - **todo-manager** — Track progress, update todo status, verify completion with evidence
 
 **Specialist (invoke ONE matching the current todo):**
@@ -117,4 +117,4 @@ Deploy these agents as a team for each implementation cycle:
 **Quality gate (once per todo, before closing):**
 
 - **value-auditor** — Evaluate from user/buyer perspective, not just technical assertions
-- **security-reviewer** — Security audit before any commit (recommended)
+- **security-reviewer** — Security audit before any commit (MANDATORY)

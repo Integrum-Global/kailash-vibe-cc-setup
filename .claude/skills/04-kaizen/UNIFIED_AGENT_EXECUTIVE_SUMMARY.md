@@ -377,4 +377,4 @@ Time elapsed: 2 minutes
 **Date**: 2025-10-26
 **Status**: READY FOR APPROVAL
 
-**Full Design Document**: `.claude/skills/04-kaizen/UNIFIED_AGENT_API_DESIGN.md`
+**Full Design Document**: `UNIFIED_AGENT_API_DESIGN.md` (in this directory)

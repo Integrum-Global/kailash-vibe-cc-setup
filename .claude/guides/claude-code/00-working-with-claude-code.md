@@ -69,7 +69,7 @@ The phase structure is enforced via **self-contained slash commands**:
 | 02    | `/todos`     | `todos/active/`                               |
 | 03    | `/implement` | `src/`, `apps/`, `docs/`                      |
 | 04    | `/redteam`   | `04-validate/`                                |
-| 05    | `/codify`    | `.claude/agents/project/`, `.claude/skills/project/` |
+| 05    | `/codify`    | Updates existing agents and skills            |
 
 Each command is self-contained -- it includes workspace detection, workflow steps, and agent teams.
 
@@ -77,9 +77,9 @@ Each command is self-contained -- it includes workspace detection, workflow step
 
 The end state is a project where:
 
-- **Agents** in `.claude/agents/project/` understand what to do
-- **Skills** in `.claude/skills/project/` know how to do it
-- **Docs** in `docs/00-authority/` provide full context
+- **Agents** in `.claude/agents/` understand what to do (updated by `/codify`)
+- **Skills** in `.claude/skills/` know how to do it (updated by `/codify`)
+- **Docs** in `docs/00-developers/` provide full context
 - **Future sessions** can work WITHOUT these instruction templates
 
 Exit criteria: Test that agents/skills work standalone.
@@ -112,19 +112,19 @@ Fresh sessions with well-documented context are MORE reliable:
 │                                                                  │
 │  Input: Human objectives, domain knowledge, constraints          │
 │  Process: VP/USP, AAA, Platform, Network Effects analysis        │
-│  Output: workspaces/<project>/01-analysis/* artifacts            │
+│  Output: docs/01-analysis/* artifacts                           │
 │                                                                  │
 │  GATE: Human verifies artifacts exist                            │
 │                                                                  │
 └─────────────────────────┬───────────────────────────────────────┘
-                          │ Human runs /todos
+                          │ Human pastes Phase 2 template
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        PHASE 2: PLANNING                         │
 │                                                                  │
-│  Input: Phase 1 artifacts, 01-analysis/*                        │
+│  Input: Phase 1 artifacts, docs/01-analysis/*                   │
 │  Process: Create todos, framework selection, architecture       │
-│  Output: todos/active/*, 02-plans/*                             │
+│  Output: todos/active/*, docs/02-plans/*                        │
 │                                                                  │
 │  GATE: "Do not continue until I have approved your todos"        │
 │  Human types: APPROVED / REVISE / ABORT                          │
@@ -135,11 +135,11 @@ Fresh sessions with well-documented context are MORE reliable:
 ┌─────────────────────────────────────────────────────────────────┐
 │                     PHASE 3: IMPLEMENTATION                      │
 │                                                                  │
-│  Input: Approved todos, 02-plans/*                              │
+│  Input: Approved todos, docs/02-plans/*                         │
 │  Process: Implementation loop (spam until todos complete)        │
-│  Output: Code, tests, docs/00-authority/*                       │
+│  Output: Code, tests, docs/00-developers/*                      │
 │                                                                  │
-│  Session Resume: /wrapup saves notes, next session resumes       │
+│  Session Resume: docs/04-codegen-instructions/* for fresh starts │
 │                                                                  │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ All todos completed
@@ -156,45 +156,63 @@ Fresh sessions with well-documented context are MORE reliable:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Why Phases Are Separate Commands
+### Why Phases Are Separate Files
 
-**Problem**: If all phases are in one command, Claude may:
+**Problem**: If all phases are in one file, Claude may:
 
 - Skip analysis and jump to implementation
 - Proceed without approval
 - Conflate different concerns
 
-**Solution**: Separate slash commands force natural gates:
+**Solution**: Separate template files force natural gates:
 
-- Human must consciously decide to run the next command
+- Human must consciously decide to paste next phase
 - Phase 1 artifacts MUST exist before Phase 2 makes sense
 - Each phase has focused context
 
 ---
 
-## Part 3: The Artifact Structure
+## Part 3: The docs/\* Artifact Structure
 
 ### Directory Purposes
 
-| Directory                       | Purpose                                                              | Lifecycle                      |
-| ------------------------------- | -------------------------------------------------------------------- | ------------------------------ |
-| `docs/00-authority/`            | **Authoritative documents** - developers and codegen read first      | Continuously updated           |
-| `docs/`                         | **Full knowledge base** - detailed documentation                     | Continuously updated           |
-| `workspaces/<project>/briefs/`  | **User input surface** - the ONLY place users write                  | Created by user                |
-| `workspaces/<project>/01-analysis/` | **Phase 1 artifacts** - research, VP, USP, platform analysis    | Created once, referenced often |
-| `workspaces/<project>/02-plans/`    | **Phase 2 artifacts** - architecture decisions, approved plans  | Approval record                |
+| Directory                       | Purpose                                                           | Lifecycle                      |
+| ------------------------------- | ----------------------------------------------------------------- | ------------------------------ |
+| `docs/00-developers/`           | **Final developer documentation** - "what it is", "how to use it" | Continuously updated           |
+| `docs/01-analysis/`             | **Phase 1 artifacts** - VP, USP, AAA, platform analysis           | Created once, referenced often |
+| `docs/02-plans/`                | **Phase 2 artifacts** - Architecture decisions, approved plans    | Approval record                |
+| `docs/03-user-flows/`           | **User journey documentation**                                    | Reference for validation       |
+| `docs/04-codegen-instructions/` | **Session resume documents** - Bootstrap fresh sessions           | Ephemeral, operational         |
 
 ### The 00- Prefix is Significant
 
-`docs/00-authority/` appears FIRST in directory listings because:
+`docs/00-developers/` appears FIRST in directory listings because:
 
 - Developers are the primary audience
-- Implementation details support developer needs
+- Implementation details (01-04) support developer needs
 - The project exists to serve developers
 
-### Session Resume
+### Session Resume Documents
 
-Run `/wrapup` before ending a session to save `.session-notes` in the workspace. The next session automatically detects and resumes. No manual copy-paste needed.
+`docs/04-codegen-instructions/` solves the **cold start problem**:
+
+**Without session resume docs:**
+
+```
+Human: "Continue working on feature X"
+Claude: "I have no context. What is feature X?"
+[30 minutes of re-explaining]
+```
+
+**With session resume docs:**
+
+```
+Human: [Pastes docs/04-codegen-instructions/feature-x.md]
+Claude: "I have full context. Continuing from step 3..."
+[Immediate productive work]
+```
+
+These are **worktree-specific** and **disposable** - operational scaffolding, not permanent documentation.
 
 ---
 
@@ -224,12 +242,12 @@ When instructions say **"Do not continue until I have approved your todos"**:
 
 ### Gate Locations
 
-| Phase Transition            | Gate Requirement                                  |
-| --------------------------- | ------------------------------------------------- |
-| Analysis → Planning         | Human verifies 01-analysis/\* exists              |
-| Planning → Implementation   | Human types APPROVED on todo list                 |
-| Implementation → Validation | Human runs /redteam                               |
-| Validation → Complete       | Human confirms outcome matches criteria           |
+| Phase Transition            | Gate Requirement                          |
+| --------------------------- | ----------------------------------------- |
+| Analysis → Planning         | Human verifies docs/01-analysis/\* exists |
+| Planning → Implementation   | Human types APPROVED on todo list         |
+| Implementation → Validation | Human pastes validation template          |
+| Validation → Complete       | Human confirms outcome matches criteria   |
 
 ---
 
@@ -286,17 +304,35 @@ Implementation instructions say: **"Spam this repeatedly until all todos/active 
 This pattern:
 
 - Each iteration is a fresh session (no accumulated errors)
-- The slash command provides consistent context
+- The instruction document provides consistent context
 - Progress is tracked via todo completion (externalized state)
 - Human can pause, resume, or adjust between iterations
 
-### Parallel Development
+### Worktree-Specific Instructions
 
-For parallel development across worktrees, multiple Claude sessions can work simultaneously. Each session detects its workspace and loads the appropriate context via `/wrapup` session notes.
+For parallel development:
+
+```
+docs/04-codegen-instructions/
+├── 01-backend-worktree.md      # Backend terminal
+├── 02-web-worktree.md          # Web frontend terminal
+├── 03-mobile-worktree.md       # Mobile app terminal
+└── 04-integration-guide.md     # How codebases merge
+```
+
+Each worktree has its own context document. Multiple Claude sessions can work in parallel on different worktrees.
 
 ### Context Loading for Fresh Sessions
 
-Run `/wrapup` at the end of each session. The next session automatically picks up `.session-notes` and resumes with full context. No manual copy-paste needed.
+Every session resume document must begin with:
+
+```markdown
+## Context Loading
+
+Peruse this document and actively reference any linked docs to achieve
+high situational awareness. Check todos/active/ for current state.
+Then proceed with implementation.
+```
 
 ---
 
@@ -309,11 +345,11 @@ After completing all phases, the project should have agents/skills that work **W
 ### Validation Test
 
 1. Start a fresh Claude session
-2. Ask: "Using only the agents in `.claude/agents/project/` and skills in `.claude/skills/project/`, implement [new feature X]"
+2. Ask: "Using the agents in `.claude/agents/` and skills in `.claude/skills/`, implement [new feature X]"
 3. Claude should be able to:
    - Understand what to do (agents)
    - Know how to do it (skills)
-   - Reference knowledge base (docs/00-authority/)
+   - Reference knowledge base (docs/00-developers/)
 
 If Claude cannot complete the task without returning to instruction templates, the agents/skills are **INCOMPLETE**.
 
@@ -323,7 +359,7 @@ If Claude cannot complete the task without returning to instruction templates, t
 | --------------------- | ------------------------------------------------------ |
 | Bug fix               | Agent knows process, skill has patterns                |
 | New feature           | Agent coordinates specialists, skills provide patterns |
-| Onboarding            | docs/00-authority/ provides full context               |
+| Onboarding            | docs/00-developers/ provides full context              |
 | Architecture question | ADRs in docs/02-plans/ explain decisions               |
 
 ---
@@ -347,27 +383,28 @@ If Claude cannot complete the task without returning to instruction templates, t
 | Specify implementation    | Limits Claude's solution space   | Describe outcomes                |
 | Review each file          | Slows progress, reduces autonomy | Review via testing               |
 | Skip approval gates       | Defeats quality control          | Always provide explicit approval |
-| Proceed without artifacts | Future sessions lose context     | Ensure workspace artifacts exist |
+| Proceed without artifacts | Future sessions lose context     | Ensure docs/\* are created       |
 
 ---
 
-## Part 9: Slash Command Usage Guide
+## Part 9: Template Usage Guide
 
-### Choosing the Right Command
+### Choosing the Right Template
 
-| Situation                       | Command                                                    | Expected Duration |
-| ------------------------------- | ---------------------------------------------------------- | ----------------- |
-| New or existing project         | `/analyze` → `/todos` → `/implement` → `/redteam`         | Multi-session     |
-| Single feature (project exists) | `/implement` (with active todos)                           | 1-2 sessions      |
-| Validation only                 | `/redteam`                                                 | 1 session         |
+| Situation                       | Template File                                                          | Expected Duration |
+| ------------------------------- | ---------------------------------------------------------------------- | ----------------- |
+| New or existing project         | `01-analyze.md` → `02-todos.md` → `03-implement.md` → `04-validate.md` | Multi-session     |
+| Single feature (project exists) | `03-implement.md` (with approved todos)                                | 1-2 sessions      |
+| Validation only                 | `04-validate.md`                                                       | 1 session         |
 
-### Slash Command Workflow
+### Template Workflow
 
-1. **Create a workspace** -- `cp -r workspaces/_template workspaces/my-project`
-2. **Write your brief** -- Edit `workspaces/my-project/briefs/01-product-brief.md`
-3. **Run phase commands** -- `/analyze`, `/todos`, `/implement`, `/redteam`, `/codify`
-4. **Wait for GATE** -- Claude stops and waits for approval between phases
-5. **Provide explicit approval** -- Type APPROVED, REVISE, or ABORT
+1. **Copy the template** - Don't excerpt, copy all of it
+2. **Fill in HUMAN INPUT section** - This is YOUR domain
+3. **Paste into Claude terminal** - Let Claude execute
+4. **Wait for GATE** - Claude will stop and wait for approval
+5. **Provide explicit approval** - Type APPROVED, REVISE, or ABORT
+6. **Repeat for next phase** - Paste next template when ready
 
 ---
 
@@ -375,11 +412,11 @@ If Claude cannot complete the task without returning to instruction templates, t
 
 ### Key Operational Points
 
-1. **Phases are enforced via slash commands** -- Each is self-contained
-2. **Gates require explicit approval keywords** -- Silence is not approval
-3. **Artifacts survive sessions** -- Memory lives in workspaces and docs/
-4. **Run `/wrapup` before ending** -- Session context saved for next start
-5. **End goal is self-sustaining agents/skills** -- Templates become unnecessary
+1. **Phases are enforced via file separation** - You can't skip phases
+2. **Gates require explicit approval keywords** - Silence is not approval
+3. **Artifacts survive sessions** - Memory lives in docs/\*
+4. **Fresh sessions load from docs/04-codegen-instructions/** - Cold start solved
+5. **End goal is self-sustaining agents/skills** - Templates become unnecessary
 
 ### The Philosophy
 
@@ -393,4 +430,4 @@ This is **autonomous maintainability** - where the project maintains itself.
 
 - **[01-what-is-claude-code.md](01-what-is-claude-code.md)** - Next: Understanding Claude Code
 - **[README.md](README.md)** - Guide index
-- **[workspaces/README.md](../../../workspaces/README.md)** - Workspace guide
+- **[commands/](../../commands/)** - Phase slash commands (`/analyze`, `/todos`, `/implement`, `/redteam`, `/codify`)
