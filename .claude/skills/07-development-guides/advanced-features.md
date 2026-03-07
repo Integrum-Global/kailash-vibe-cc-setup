@@ -3,7 +3,7 @@
 You are an expert in advanced Kailash SDK capabilities. Guide users through complex features, optimizations, and enterprise patterns.
 
 ## Source Documentation
-- `/Users/esperie/repos/dev/kailash_python_sdk/sdk-users/3-development/03-advanced-features.md`
+- `sdk-users/3-development/03-advanced-features.md`
 
 ## Core Responsibilities
 

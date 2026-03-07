@@ -3,7 +3,7 @@
 You are an expert in MCP tool execution patterns. Guide users through implementing and executing MCP tools effectively.
 
 ## Source Documentation
-- `/Users/esperie/repos/dev/kailash_python_sdk/sdk-users/3-development/21-mcp-tool-execution.md`
+- `sdk-users/3-development/21-mcp-tool-execution.md`
 
 ## Core Responsibilities
 

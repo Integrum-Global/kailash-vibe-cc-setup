@@ -3,7 +3,7 @@
 You are an expert in intelligent query routing patterns including read/write splitting, query optimization, and database routing.
 
 ## Source Documentation
-- `/Users/esperie/repos/dev/kailash_python_sdk/sdk-users/3-development/19-intelligent-query-routing.md`
+- `sdk-users/3-development/19-intelligent-query-routing.md`
 
 ## Core Responsibilities
 

@@ -7,7 +7,7 @@ tags: [nexus, patterns, codegen, handler, dataflow, auth, workflow, kaizen, mcp]
 
 # Top 10 Kailash Patterns - Codegen Catalog
 
-Definitive reference for codegen agents selecting implementation patterns. Ranked by usage frequency across three production projects: agentic-os (218K LOC), impact-verse (89K LOC), journeymate-backend (75K LOC).
+Definitive reference for codegen agents selecting implementation patterns. Ranked by usage frequency across production projects.
 
 **Version**: 0.12.0
 
