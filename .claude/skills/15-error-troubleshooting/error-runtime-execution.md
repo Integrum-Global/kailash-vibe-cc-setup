@@ -24,7 +24,7 @@ runtime.execute(workflow.build(), inputs={"node": {"param": "value"}})
 runtime.execute(workflow.build(), overrides={"node": {"param": "value"}})
 
 # ✅ Fix: Use 'parameters'
-runtime.execute(workflow.build(), parameters={"node": {"param": "value"}})
+runtime.execute(workflow.build(), inputs={"node": {"param": "value"}})
 ```
 
 ### Wrong Runtime Selection

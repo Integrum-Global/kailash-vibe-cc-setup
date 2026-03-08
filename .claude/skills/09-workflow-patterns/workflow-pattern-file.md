@@ -17,6 +17,7 @@ Patterns for automated file processing, transformation, and batch operations.
 ## Quick Reference
 
 File processing patterns:
+
 - **Batch file processing** - Process multiple files
 - **File transformation** - Convert formats
 - **Document extraction** - PDF, DOCX to text
@@ -24,184 +25,211 @@ File processing patterns:
 
 ## Pattern 1: Batch CSV Processing
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. List CSV files
-workflow.add_node("FileListNode", "list_files", {
-    "directory": "data/input",
-    "pattern": "*.csv"
-})
+// 1. List CSV files
+builder.add_node("FileListNode", "list_files", ValueMap::from([
+    ("directory".into(), Value::String("data/input".into())),
+    ("pattern".into(), Value::String("*.csv".into())),
+]));
 
-# 2. Process each file
-workflow.add_node("MapNode", "process_files", {
-    "input": "{{list_files.files}}",
-    "workflow": "process_single_csv"
-})
+// 2. Process each file
+builder.add_node("MapNode", "process_files", ValueMap::from([
+    ("input".into(), Value::String("{{list_files.files}}".into())),
+    ("workflow".into(), Value::String("process_single_csv".into())),
+]));
 
-# 3. Merge results
-workflow.add_node("MergeNode", "merge_results", {
-    "inputs": "{{process_files.results}}",
-    "strategy": "combine"
-})
+// 3. Merge results
+builder.add_node("MergeNode", "merge_results", ValueMap::from([
+    ("inputs".into(), Value::String("{{process_files.results}}".into())),
+    ("strategy".into(), Value::String("combine".into())),
+]));
 
-# 4. Write consolidated output
-workflow.add_node("CSVWriterNode", "write_output", {
-    "file_path": "data/output/consolidated.csv",
-    "data": "{{merge_results.combined}}",
-    "headers": ["id", "name", "value"]
-})
+// 4. Write consolidated output
+builder.add_node("CSVWriterNode", "write_output", ValueMap::from([
+    ("file_path".into(), Value::String("data/output/consolidated.csv".into())),
+    ("data".into(), Value::String("{{merge_results.combined}}".into())),
+    ("headers".into(), Value::Array(vec![
+        Value::String("id".into()),
+        Value::String("name".into()),
+        Value::String("value".into()),
+    ])),
+]));
 
-workflow.add_connection("list_files", "files", "process_files", "input")
-workflow.add_connection("process_files", "results", "merge_results", "inputs")
-workflow.add_connection("merge_results", "combined", "write_output", "data")
+builder.connect("list_files", "files", "process_files", "input");
+builder.connect("process_files", "results", "merge_results", "inputs");
+builder.connect("merge_results", "combined", "write_output", "data");
 
-with LocalRuntime() as runtime:
-    results, run_id = runtime.execute(workflow.build())
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::new()).await?;
 ```
 
 ## Pattern 2: PDF Document Extraction
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Read PDF document
-workflow.add_node("DocumentProcessorNode", "extract_pdf", {
-    "file_path": "{{input.pdf_path}}",
-    "extract_metadata": True,
-    "preserve_structure": True,
-    "page_numbers": True
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Extract tables
-workflow.add_node("TransformNode", "extract_tables", {
-    "input": "{{extract_pdf.content}}",
-    "transformation": "extract_tables()"
-})
+// 1. Read PDF document
+builder.add_node("DocumentProcessorNode", "extract_pdf", ValueMap::from([
+    ("file_path".into(), Value::String("{{input.pdf_path}}".into())),
+    ("extract_metadata".into(), Value::Bool(true)),
+    ("preserve_structure".into(), Value::Bool(true)),
+    ("page_numbers".into(), Value::Bool(true)),
+]));
 
-# 3. Extract text
-workflow.add_node("TransformNode", "extract_text", {
-    "input": "{{extract_pdf.content}}",
-    "transformation": "extract_text()"
-})
+// 2. Extract tables
+builder.add_node("TransformNode", "extract_tables", ValueMap::from([
+    ("input".into(), Value::String("{{extract_pdf.content}}".into())),
+    ("transformation".into(), Value::String("extract_tables()".into())),
+]));
 
-# 4. Analyze with AI
-workflow.add_node("LLMNode", "analyze_document", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": "Summarize this document: {{extract_text.text}}"
-})
+// 3. Extract text
+builder.add_node("TransformNode", "extract_text", ValueMap::from([
+    ("input".into(), Value::String("{{extract_pdf.content}}".into())),
+    ("transformation".into(), Value::String("extract_text()".into())),
+]));
 
-# 5. Save results
-workflow.add_node("JSONWriterNode", "save_results", {
-    "file_path": "output/{{input.pdf_name}}_analysis.json",
-    "data": {
-        "metadata": "{{extract_pdf.metadata}}",
-        "tables": "{{extract_tables.tables}}",
-        "summary": "{{analyze_document.response}}"
-    },
-    "indent": 2
-})
+// 4. Analyze with AI
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+builder.add_node("LLMNode", "analyze_document", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("LLM_PROVIDER").expect("LLM_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(llm_model.into())),
+    ("prompt".into(), Value::String("Summarize this document: {{extract_text.text}}".into())),
+]));
 
-workflow.add_connection("extract_pdf", "content", "extract_tables", "input")
-workflow.add_connection("extract_pdf", "content", "extract_text", "input")
-workflow.add_connection("extract_text", "text", "analyze_document", "prompt")
-workflow.add_connection("analyze_document", "response", "save_results", "data")
+// 5. Save results
+builder.add_node("JSONWriterNode", "save_results", ValueMap::from([
+    ("file_path".into(), Value::String("output/{{input.pdf_name}}_analysis.json".into())),
+    ("data".into(), Value::Object(ValueMap::from([
+        ("metadata".into(), Value::String("{{extract_pdf.metadata}}".into())),
+        ("tables".into(), Value::String("{{extract_tables.tables}}".into())),
+        ("summary".into(), Value::String("{{analyze_document.response}}".into())),
+    ]))),
+    ("indent".into(), Value::Integer(2)),
+]));
+
+builder.connect("extract_pdf", "content", "extract_tables", "input");
+builder.connect("extract_pdf", "content", "extract_text", "input");
+builder.connect("extract_text", "text", "analyze_document", "prompt");
+builder.connect("analyze_document", "response", "save_results", "data");
 ```
 
 ## Pattern 3: File Format Conversion
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Read source file
-workflow.add_node("ConditionalNode", "detect_format", {
-    "condition": "{{input.file_ext}}",
-    "branches": {
-        ".csv": "read_csv",
-        ".json": "read_json",
-        ".xlsx": "read_excel"
-    }
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Read different formats
-workflow.add_node("CSVReaderNode", "read_csv", {
-    "file_path": "{{input.file_path}}"
-})
+// 1. Read source file
+builder.add_node("ConditionalNode", "detect_format", ValueMap::from([
+    ("condition".into(), Value::String("{{input.file_ext}}".into())),
+    ("branches".into(), Value::Object(ValueMap::from([
+        (".csv".into(), Value::String("read_csv".into())),
+        (".json".into(), Value::String("read_json".into())),
+        (".xlsx".into(), Value::String("read_excel".into())),
+    ]))),
+]));
 
-workflow.add_node("JSONReaderNode", "read_json", {
-    "file_path": "{{input.file_path}}"
-})
+// 2. Read different formats
+builder.add_node("CSVReaderNode", "read_csv", ValueMap::from([
+    ("file_path".into(), Value::String("{{input.file_path}}".into())),
+]));
 
-workflow.add_node("ExcelReaderNode", "read_excel", {
-    "file_path": "{{input.file_path}}"
-})
+builder.add_node("JSONReaderNode", "read_json", ValueMap::from([
+    ("file_path".into(), Value::String("{{input.file_path}}".into())),
+]));
 
-# 3. Normalize to common format
-workflow.add_node("TransformNode", "normalize", {
-    "input": "{{read_csv.data || read_json.data || read_excel.data}}",
-    "transformation": "normalize_to_dict_list()"
-})
+builder.add_node("ExcelReaderNode", "read_excel", ValueMap::from([
+    ("file_path".into(), Value::String("{{input.file_path}}".into())),
+]));
 
-# 4. Write in target format
-workflow.add_node("ConditionalNode", "write_format", {
-    "condition": "{{input.target_format}}",
-    "branches": {
-        "csv": "write_csv",
-        "json": "write_json",
-        "parquet": "write_parquet"
-    }
-})
+// 3. Normalize to common format
+builder.add_node("TransformNode", "normalize", ValueMap::from([
+    ("input".into(), Value::String("{{read_csv.data || read_json.data || read_excel.data}}".into())),
+    ("transformation".into(), Value::String("normalize_to_dict_list()".into())),
+]));
 
-workflow.add_connection("detect_format", "result", "normalize", "input")
-workflow.add_connection("normalize", "data", "write_format", "input")
+// 4. Write in target format
+builder.add_node("ConditionalNode", "write_format", ValueMap::from([
+    ("condition".into(), Value::String("{{input.target_format}}".into())),
+    ("branches".into(), Value::Object(ValueMap::from([
+        ("csv".into(), Value::String("write_csv".into())),
+        ("json".into(), Value::String("write_json".into())),
+        ("parquet".into(), Value::String("write_parquet".into())),
+    ]))),
+]));
+
+builder.connect("detect_format", "result", "normalize", "input");
+builder.connect("normalize", "data", "write_format", "input");
 ```
 
 ## Pattern 4: Watch Folder Automation
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Watch directory for new files
-workflow.add_node("FileWatchNode", "watch_folder", {
-    "directory": "data/inbox",
-    "pattern": "*.pdf",
-    "event": "created"
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Validate file
-workflow.add_node("FileValidateNode", "validate", {
-    "file_path": "{{watch_folder.file_path}}",
-    "min_size": 1024,  # 1KB minimum
-    "max_size": 10485760,  # 10MB maximum
-    "extensions": [".pdf"]
-})
+// 1. Watch directory for new files
+builder.add_node("FileWatchNode", "watch_folder", ValueMap::from([
+    ("directory".into(), Value::String("data/inbox".into())),
+    ("pattern".into(), Value::String("*.pdf".into())),
+    ("event".into(), Value::String("created".into())),
+]));
 
-# 3. Process document
-workflow.add_node("DocumentProcessorNode", "process", {
-    "file_path": "{{validate.file_path}}"
-})
+// 2. Validate file
+builder.add_node("FileValidateNode", "validate", ValueMap::from([
+    ("file_path".into(), Value::String("{{watch_folder.file_path}}".into())),
+    ("min_size".into(), Value::Integer(1024)),      // 1KB minimum
+    ("max_size".into(), Value::Integer(10485760)),   // 10MB maximum
+    ("extensions".into(), Value::Array(vec![
+        Value::String(".pdf".into()),
+    ])),
+]));
 
-# 4. Move to processed folder
-workflow.add_node("FileMoveNode", "move_file", {
-    "source": "{{validate.file_path}}",
-    "destination": "data/processed/{{watch_folder.filename}}"
-})
+// 3. Process document
+builder.add_node("DocumentProcessorNode", "process", ValueMap::from([
+    ("file_path".into(), Value::String("{{validate.file_path}}".into())),
+]));
 
-# 5. On error, move to failed folder
-workflow.add_node("FileMoveNode", "move_failed", {
-    "source": "{{validate.file_path}}",
-    "destination": "data/failed/{{watch_folder.filename}}"
-})
+// 4. Move to processed folder
+builder.add_node("FileMoveNode", "move_file", ValueMap::from([
+    ("source".into(), Value::String("{{validate.file_path}}".into())),
+    ("destination".into(), Value::String("data/processed/{{watch_folder.filename}}".into())),
+]));
 
-workflow.add_connection("watch_folder", "file_path", "validate", "file_path")
-workflow.add_connection("validate", "file_path", "process", "file_path")
-workflow.add_connection("process", "result", "move_file", "source")
-# Error handling connection
-workflow.add_error_handler("process", "move_failed")
+// 5. On error, move to failed folder
+builder.add_node("FileMoveNode", "move_failed", ValueMap::from([
+    ("source".into(), Value::String("{{validate.file_path}}".into())),
+    ("destination".into(), Value::String("data/failed/{{watch_folder.filename}}".into())),
+]));
+
+builder.connect("watch_folder", "file_path", "validate", "file_path");
+builder.connect("validate", "file_path", "process", "file_path");
+builder.connect("process", "result", "move_file", "source");
+// Error handling connection
+// builder.add_error_handler("process", "move_failed");
 ```
 
 ## Best Practices
@@ -225,8 +253,5 @@ workflow.add_error_handler("process", "move_failed")
 
 - **Data Nodes**: [`nodes-data-reference`](../nodes/nodes-data-reference.md)
 - **ETL Patterns**: [`workflow-pattern-etl`](workflow-pattern-etl.md)
-
-## Documentation
-
 
 <!-- Trigger Keywords: file processing, batch file, document workflow, file automation, CSV processing, PDF extraction -->

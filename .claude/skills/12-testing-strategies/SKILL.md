@@ -1,11 +1,11 @@
 ---
 name: testing-strategies
-description: "Comprehensive testing strategies for Kailash applications including the 3-tier testing approach with NO MOCKING policy for Tiers 2-3. Use when asking about 'testing', 'test strategy', '3-tier testing', 'unit tests', 'integration tests', 'end-to-end tests', 'testing workflows', 'testing DataFlow', 'testing Nexus', 'NO MOCKING', 'real infrastructure', 'test organization', or 'testing best practices'."
+description: "Comprehensive testing strategies for the Kailash Rust SDK including the 3-tier testing approach with NO MOCKING policy for Tiers 2-3. Use when asking about 'testing', 'test strategy', '3-tier testing', 'unit tests', 'integration tests', 'end-to-end tests', 'testing workflows', 'testing DataFlow', 'testing Nexus', 'NO MOCKING', 'real infrastructure', 'test organization', or 'testing best practices'."
 ---
 
 # Kailash Testing Strategies
 
-Comprehensive testing approach for Kailash applications using the 3-tier testing strategy with NO MOCKING policy.
+Comprehensive testing approach for the Kailash Rust SDK using the 3-tier testing strategy with NO MOCKING policy.
 
 ## Overview
 
@@ -13,7 +13,7 @@ Kailash testing philosophy:
 
 - **3-Tier Strategy**: Unit, Integration, End-to-End
 - **NO MOCKING Policy**: Tiers 2-3 use real infrastructure
-- **Real Database Testing**: Actual PostgreSQL/SQLite
+- **Real Database Testing**: Actual PostgreSQL/SQLite via sqlx
 - **Real API Testing**: Live HTTP calls
 - **Real LLM Testing**: Actual model calls (with caching)
 
@@ -22,7 +22,7 @@ Kailash testing philosophy:
 ### Core Strategy
 
 - **[test-3tier-strategy](test-3tier-strategy.md)** - Complete 3-tier testing guide
-  - Tier 1: Unit Tests (test doubles allowed)
+  - Tier 1: Unit Tests (trait-based test doubles allowed)
   - Tier 2: Integration Tests (NO MOCKING)
   - Tier 3: End-to-End Tests (NO MOCKING)
   - Test organization
@@ -33,68 +33,76 @@ Kailash testing philosophy:
 
 ### Tier 1: Unit Tests
 
-**Scope**: Individual functions and classes
-**Mocking**: Allowed (test doubles, fakes)
+**Scope**: Individual functions and structs
+**Mocking**: ✅ Trait-based test doubles allowed
 **Speed**: Fast (< 1s per test)
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
+```rust
+#[test]
+fn test_workflow_builder() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("LogNode", "node1", ValueMap::new());
 
-def test_workflow_builder():
-    workflow = WorkflowBuilder()
-    workflow.add_node("LogNode", "node1", {})
-    built = workflow.build()
-    assert built is not None
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry);
+    assert!(workflow.is_ok());
+}
 ```
 
 ### Tier 2: Integration Tests
 
 **Scope**: Component integration (workflows, database, APIs)
-**Mocking**: NO MOCKING
+**Mocking**: ❌ NO MOCKING
 **Speed**: Medium (1-10s per test)
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-import os
-import pytest
+```rust
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_dataflow_crud() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
 
-@pytest.mark.integration
-def test_dataflow_crud():
-    db_url = os.environ["DATABASE_URL"]
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("SQLQueryNode", "create", ValueMap::from([
+        ("connection_string".into(), Value::String(db_url.into())),
+        ("query".into(), Value::String("INSERT INTO users (name) VALUES ($1) RETURNING id".into())),
+        ("parameters".into(), Value::Array(vec![Value::String("Test".into())])),
+    ]));
 
-    workflow = WorkflowBuilder()
-    workflow.add_node("SQLQueryNode", "create", {
-        "connection_string": db_url,
-        "query": "INSERT INTO users (name) VALUES ($1) RETURNING id",
-        "parameters": ["Test"],
-    })
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
-    assert "create" in results
+    assert!(result.results.contains_key("create"));
+}
 ```
 
 ### Tier 3: End-to-End Tests
 
 **Scope**: Complete user workflows
-**Mocking**: NO MOCKING
+**Mocking**: ❌ NO MOCKING
 **Speed**: Slow (10s+ per test)
 
-```python
-import requests
-import pytest
+```rust
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_user_registration_flow() {
+    // Real HTTP request to actual axum API
+    let client = reqwest::Client::new();
+    let response = client.post("http://localhost:3000/api/register")
+        .json(&serde_json::json!({
+            "email": "test@example.com",
+            "name": "Test User"
+        }))
+        .send()
+        .await
+        .expect("request failed");
 
-@pytest.mark.e2e
-def test_user_registration_flow():
-    response = requests.post("http://localhost:3000/api/register", json={
-        "email": "test@example.com",
-        "name": "Test User",
-    })
-
-    assert response.status_code == 200
-    body = response.json()
-    assert "user_id" in body
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.expect("json parse failed");
+    assert!(body["user_id"].is_string());
+}
 ```
 
 ## NO MOCKING Policy
@@ -124,129 +132,149 @@ def test_user_registration_flow():
 - Test databases (Docker containers)
 - Test API endpoints
 - Test LLM accounts (with caching)
-- Test file systems (temp directories via `tempfile` module)
+- Test file systems (temp directories via `tempfile` crate)
 
 ## Test Organization
 
 ### Directory Structure
 
 ```
-project/
+crates/kailash-core/
   src/
-    app/
-      main.py
+    lib.rs           # #[cfg(test)] mod tests at bottom
   tests/
-    unit/               # Tier 1
-      test_workflows.py
-      test_models.py
-    integration/        # Tier 2
-      test_dataflow.py
-      test_nexus.py
-    e2e/                # Tier 3
-      test_user_flows.py
-  conftest.py           # Shared fixtures
-  pytest.ini            # Test configuration
+    integration/     # #[cfg(feature = "integration")]
+    e2e/             # #[cfg(feature = "e2e")]
+
+crates/kailash-dataflow/
+  tests/
+    concurrency_test.rs
+    integration/
+
+tests/                # Workspace-level integration tests
+  docker-compose.test.yml
 ```
 
-### pytest Configuration
+### Test Module Patterns
 
-```ini
-# pytest.ini
-[pytest]
-markers =
-    integration: Integration tests (require real database)
-    e2e: End-to-end tests (require running services)
-testpaths = tests
+```rust
+// In src/lib.rs or src/module.rs — Tier 1 unit tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_workflow_builder_creates_workflow() {
+        // ...
+    }
+}
+
+// In tests/integration/mod.rs — Tier 2
+#[cfg(feature = "integration")]
+mod integration {
+    #[tokio::test]
+    async fn test_with_real_database() {
+        // ...
+    }
+}
 ```
 
 ## Testing Different Components
 
 ### Testing Workflows
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+#[tokio::test]
+async fn test_workflow_execution() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("JSONTransformNode", "calc", ValueMap::from([
+        ("expression".into(), Value::String("@.value".into())),
+    ]));
 
-def test_workflow_execution():
-    workflow = WorkflowBuilder()
-    workflow.add_node("JSONTransformNode", "calc", {
-        "expression": "@.value",
-    })
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build(), {
-        "data": {"value": 42},
-    })
-    assert "calc" in results
+    let inputs = ValueMap::from([
+        ("data".into(), Value::Object(ValueMap::from([
+            ("value".into(), Value::Integer(42)),
+        ]))),
+    ]);
+    let result = runtime.execute(&workflow, inputs).await.expect("execution failed");
+
+    assert!(result.results.contains_key("calc"));
+}
 ```
 
 ### Testing DataFlow
 
-```python
-from kailash_dataflow import DataFlow, db
-import os
-import pytest
+```rust
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_dataflow_operations() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    let pool = sqlx::PgPool::connect(&db_url).await.expect("connect failed");
 
-@pytest.mark.integration
-def test_dataflow_operations():
-    db_url = os.environ["DATABASE_URL"]
-    df = DataFlow(db_url)
+    // Real database operations via sqlx
+    let row = sqlx::query!("SELECT 1 as value")
+        .fetch_one(&pool)
+        .await
+        .expect("query failed");
 
-    @db.model
-    class TestUser:
-        name: str
-
-    df.register_model(TestUser)
+    assert_eq!(row.value, Some(1));
+}
 ```
 
 ### Testing Nexus
 
-```python
-import requests
-import pytest
+```rust
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_nexus_api() {
+    let client = reqwest::Client::new();
 
-@pytest.mark.e2e
-def test_nexus_api():
-    response = requests.post(
-        "http://localhost:3000/api/workflow/test_workflow",
-        json={"input": "data"},
-    )
+    let response = client.post("http://localhost:3000/api/workflow/test_workflow")
+        .json(&serde_json::json!({"input": "data"}))
+        .send()
+        .await
+        .expect("request failed");
 
-    assert response.status_code == 200
-    body = response.json()
-    assert "result" in body
+    assert_eq!(response.status(), 200);
+    let body: serde_json::Value = response.json().await.expect("json parse failed");
+    assert!(body.get("result").is_some());
+}
 ```
 
 ### Testing Kaizen Agents
 
-```python
-from kailash_kaizen import BaseAgent
-import pytest
+```rust
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_agent_execution() {
+    dotenvy::dotenv().ok();
 
-@pytest.mark.integration
-def test_agent_execution():
-    class TestAgent(BaseAgent):
-        def run(self, input_text):
-            return {"response": f"Processed: {input_text}"}
+    // Real LLM call (use caching to reduce costs)
+    let agent = MyAgent::new();
+    let result = agent.run("Test query").await.expect("agent failed");
 
-    agent = TestAgent(name="test")
-    result = agent.run("Test query")
-    assert result["response"]
+    assert!(!result.output.is_empty());
+}
 ```
 
 ## Critical Rules
 
-- Tier 1: Test doubles for external dependencies allowed
-- Tier 2-3: Use real infrastructure
-- Use Docker for test databases
-- Clean up resources after tests
-- Cache LLM responses for cost
-- Run Tier 1 in CI, Tier 2-3 optionally
-- NEVER use mock frameworks in Tier 2-3
-- NEVER mock database in Tier 2-3
-- NEVER mock HTTP calls in Tier 2-3
-- NEVER skip resource cleanup
-- NEVER commit test credentials (use `.env`)
+- ✅ Tier 1: Trait-based test doubles for external dependencies
+- ✅ Tier 2-3: Use real infrastructure
+- ✅ Use Docker for test databases
+- ✅ Clean up resources after tests
+- ✅ Cache LLM responses for cost
+- ✅ Run Tier 1 in CI, Tier 2-3 optionally
+- ❌ NEVER use mockall/mock frameworks in Tier 2-3
+- ❌ NEVER mock database in Tier 2-3
+- ❌ NEVER mock HTTP calls in Tier 2-3
+- ❌ NEVER skip resource cleanup
+- ❌ NEVER commit test credentials (use `.env`)
 
 ## Running Tests
 
@@ -254,29 +282,44 @@ def test_agent_execution():
 
 ```bash
 # Run all unit tests
-pytest tests/unit/
+cargo test --workspace
 
 # Run by tier
-pytest tests/unit/                          # Tier 1: Unit
-pytest tests/integration/ -m integration    # Tier 2: Integration
-pytest tests/e2e/ -m e2e                    # Tier 3: E2E
+cargo test --workspace                        # Tier 1: Unit
+cargo test --workspace --features integration # Tier 2: Integration
+cargo test --workspace --features e2e         # Tier 3: E2E
 
 # Run with coverage
-pytest --cov=src --cov-report=html tests/
+cargo tarpaulin --workspace --out Html
+# or
+cargo llvm-cov --workspace --html
 ```
 
 ### CI/CD
 
 ```bash
 # Fast CI (Tier 1 only)
-pytest tests/unit/
-flake8 src/
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
 
 # Full CI (all tiers)
 docker compose -f tests/docker-compose.test.yml up -d
-pytest tests/ -m "not e2e or integration"
+cargo test --workspace --features integration,e2e
 docker compose -f tests/docker-compose.test.yml down
 ```
+
+## When to Use This Skill
+
+Use this skill when you need to:
+
+- Understand Kailash testing philosophy
+- Set up test infrastructure
+- Write integration tests
+- Test workflows with real execution
+- Test DataFlow with real databases
+- Test Nexus APIs end-to-end
+- Organize test suites
+- Configure CI/CD testing
 
 ## Best Practices
 
@@ -286,27 +329,27 @@ docker compose -f tests/docker-compose.test.yml down
 - Use AAA pattern (Arrange, Act, Assert)
 - Test both success and failure cases
 - Clean up resources properly
-- Use fixtures for setup/teardown
+- Use helper functions for setup/teardown
 
 ### Performance
 
 - Use test database containers
 - Cache expensive operations
-- Run tests in parallel (`pytest-xdist`)
-- Mark slow tests with `@pytest.mark.slow`
+- Run tests in parallel (when safe) via `cargo test -- --test-threads=N`
+- Feature-gate slow tests with `#[cfg(feature = "integration")]`
 
 ### Maintenance
 
-- Keep tests close to code
+- Keep tests close to code (`#[cfg(test)] mod tests`)
 - Update tests with code changes
 - Review test coverage regularly
 - Remove obsolete tests
 
 ## Related Skills
 
-- **[02-dataflow](../02-dataflow/SKILL.md)** - DataFlow testing
-- **[03-nexus](../03-nexus/SKILL.md)** - API testing
-- **[17-gold-standards](../17-gold-standards/SKILL.md)** - Testing best practices
+- **[02-dataflow](../../02-dataflow/SKILL.md)** - DataFlow testing
+- **[03-nexus](../../03-nexus/SKILL.md)** - API testing
+- **[26-gold-standards](../../26-gold-standards/SKILL.md)** - Testing best practices
 
 ## Support
 

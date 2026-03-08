@@ -69,10 +69,10 @@ runtime.execute(workflow.build())
 ### Variation 3: Missing .build() with Parameters
 ```python
 # ❌ WRONG - parameters without .build()
-runtime.execute(workflow, parameters={"node": {"param": "value"}})  # ERROR!
+runtime.execute(workflow, inputs={"node": {"param": "value"}})  # ERROR!
 
 # ✅ CORRECT - .build() before parameters
-runtime.execute(workflow.build(), parameters={"node": {"param": "value"}})
+runtime.execute(workflow.build(), inputs={"node": {"param": "value"}})
 ```
 
 ### Variation 4: Storing Workflow Without .build()

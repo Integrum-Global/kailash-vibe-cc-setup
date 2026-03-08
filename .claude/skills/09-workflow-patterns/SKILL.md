@@ -10,6 +10,7 @@ Production-ready workflow patterns and templates for industry-specific use cases
 ## Overview
 
 Complete workflow patterns for:
+
 - Industry-specific applications
 - Common use case templates
 - Production-ready patterns
@@ -18,6 +19,7 @@ Complete workflow patterns for:
 ## Industry-Specific Patterns
 
 ### Finance
+
 - **[workflow-industry-finance](workflow-industry-finance.md)** - Financial services workflows
   - Payment processing
   - Fraud detection
@@ -27,6 +29,7 @@ Complete workflow patterns for:
   - Credit scoring
 
 ### Healthcare
+
 - **[workflow-industry-healthcare](workflow-industry-healthcare.md)** - Healthcare workflows
   - Patient data processing
   - Medical record management
@@ -36,6 +39,7 @@ Complete workflow patterns for:
   - HIPAA compliance
 
 ### Logistics
+
 - **[workflow-industry-logistics](workflow-industry-logistics.md)** - Logistics workflows
   - Order fulfillment
   - Inventory management
@@ -45,6 +49,7 @@ Complete workflow patterns for:
   - Supply chain coordination
 
 ### Manufacturing
+
 - **[workflow-industry-manufacturing](workflow-industry-manufacturing.md)** - Manufacturing workflows
   - Production planning
   - Quality control
@@ -54,6 +59,7 @@ Complete workflow patterns for:
   - Defect tracking
 
 ### Retail
+
 - **[workflow-industry-retail](workflow-industry-retail.md)** - Retail workflows
   - Order processing
   - Inventory management
@@ -65,6 +71,7 @@ Complete workflow patterns for:
 ## Common Use Case Patterns
 
 ### AI & Document Processing
+
 - **[workflow-pattern-ai-document](workflow-pattern-ai-document.md)** - AI document processing
   - Document classification
   - Entity extraction
@@ -74,6 +81,7 @@ Complete workflow patterns for:
   - Multi-document analysis
 
 ### API Integration
+
 - **[workflow-pattern-api](workflow-pattern-api.md)** - API integration patterns
   - API orchestration
   - Multi-API coordination
@@ -83,6 +91,7 @@ Complete workflow patterns for:
   - Error handling
 
 ### Business Rules
+
 - **[workflow-pattern-business-rules](workflow-pattern-business-rules.md)** - Business rule engines
   - Rule evaluation
   - Decision tables
@@ -92,6 +101,7 @@ Complete workflow patterns for:
   - Approval workflows
 
 ### Cyclic Workflows
+
 - **[workflow-pattern-cyclic](workflow-pattern-cyclic.md)** - Cyclic workflow patterns
   - Iterative processing
   - Feedback loops
@@ -101,6 +111,7 @@ Complete workflow patterns for:
   - Convergence detection
 
 ### Data Processing
+
 - **[workflow-pattern-data](workflow-pattern-data.md)** - Data processing patterns
   - Data validation
   - Data enrichment
@@ -110,6 +121,7 @@ Complete workflow patterns for:
   - Master data management
 
 ### ETL (Extract, Transform, Load)
+
 - **[workflow-pattern-etl](workflow-pattern-etl.md)** - ETL workflows
   - Data extraction
   - Transformation pipelines
@@ -119,6 +131,7 @@ Complete workflow patterns for:
   - Performance optimization
 
 ### File Processing
+
 - **[workflow-pattern-file](workflow-pattern-file.md)** - File processing patterns
   - Bulk file processing
   - File monitoring
@@ -128,6 +141,7 @@ Complete workflow patterns for:
   - Multi-format handling
 
 ### Project Management
+
 - **[workflow-pattern-project-mgmt](workflow-pattern-project-mgmt.md)** - Project workflows
   - Task automation
   - Status tracking
@@ -137,6 +151,7 @@ Complete workflow patterns for:
   - Approval workflows
 
 ### RAG (Retrieval-Augmented Generation)
+
 - **[workflow-pattern-rag](workflow-pattern-rag.md)** - RAG workflows
   - Document indexing
   - Vector search
@@ -146,6 +161,7 @@ Complete workflow patterns for:
   - Multi-source RAG
 
 ### Security
+
 - **[workflow-pattern-security](workflow-pattern-security.md)** - Security workflows
   - Access control
   - Audit logging
@@ -167,6 +183,7 @@ Complete workflow patterns for:
 ### Pattern Structure
 
 Each pattern includes:
+
 - **Overview**: Use case description
 - **Architecture**: Workflow design
 - **Nodes Used**: Required nodes
@@ -178,6 +195,7 @@ Each pattern includes:
 ## When to Use This Skill
 
 Use this skill when you need:
+
 - Industry-specific workflow templates
 - Production-ready starting points
 - Common use case implementations
@@ -189,16 +207,26 @@ Use this skill when you need:
 
 ### Starting from Patterns
 
-```python
-# 1. Copy pattern template
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 2. Add nodes from pattern
-workflow.add_node("NodeType", "id", {...})
+// 1. Create registry and builder
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 3. Customize parameters
-# 4. Add industry-specific logic
-# 5. Test with real data
+// 2. Add nodes from pattern
+builder.add_node("NodeType", "id", ValueMap::from([
+    ("param".into(), Value::String("value".into())),
+]));
+
+// 3. Connect nodes, customize parameters
+// 4. Add industry-specific logic
+// 5. Build, execute, and test with real data
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::new()).await?;
 ```
 
 ### Combining Patterns
@@ -211,28 +239,48 @@ workflow.add_node("NodeType", "id", {...})
 ## Quick Patterns
 
 ### ETL Workflow
-```python
-workflow.add_node("Extract", "extract", {"source": "..."})
-workflow.add_node("Transform", "transform", {"logic": "..."})
-workflow.add_node("Load", "load", {"destination": "..."})
-workflow.add_connection("extract", "data", "transform", "input")
-workflow.add_connection("transform", "output", "load", "data")
+
+```rust
+let mut builder = WorkflowBuilder::new();
+
+builder.add_node("CSVReaderNode", "extract", ValueMap::from([
+    ("file_path".into(), Value::String("data/source.csv".into())),
+]));
+builder.add_node("TransformNode", "transform", ValueMap::from([
+    ("transformation".into(), Value::String("normalize".into())),
+]));
+builder.add_node("DatabaseExecuteNode", "load", ValueMap::from([
+    ("query".into(), Value::String("INSERT INTO target VALUES (?, ?)".into())),
+]));
+
+builder.connect("extract", "data", "transform", "input");
+builder.connect("transform", "output", "load", "data");
 ```
 
 ### RAG Workflow
-```python
-workflow.add_node("Embed", "embed", {"model": "text-embedding-ada-002"})
-workflow.add_node("Search", "search", {"index": "vectors"})
-workflow.add_node("Generate", "generate", {"model": "gpt-4"})
+
+```rust
+let embedding_model = std::env::var("EMBEDDING_MODEL").expect("EMBEDDING_MODEL in .env");
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+
+builder.add_node("EmbeddingNode", "embed", ValueMap::from([
+    ("model".into(), Value::String(embedding_model.into())),
+]));
+builder.add_node("VectorSearchNode", "search", ValueMap::from([
+    ("collection".into(), Value::String("documents".into())),
+]));
+builder.add_node("LLMNode", "generate", ValueMap::from([
+    ("model".into(), Value::String(llm_model.into())),
+]));
 ```
 
 ## CRITICAL Warnings
 
-| Rule | Reason |
-|------|--------|
-| ❌ NEVER hardcode secrets | Use environment variables |
-| ✅ ALWAYS validate inputs | At workflow boundaries |
-| ❌ NEVER skip error handling | Required in production |
+| Rule                      | Reason                                          |
+| ------------------------- | ----------------------------------------------- |
+| NEVER hardcode secrets    | Use environment variables via `std::env::var()` |
+| ALWAYS validate inputs    | At workflow boundaries                          |
+| NEVER skip error handling | Use `Result<T, E>` in production                |
 
 ## Related Skills
 
@@ -246,6 +294,7 @@ workflow.add_node("Generate", "generate", {"model": "gpt-4"})
 ## Support
 
 For workflow pattern help, invoke:
+
 - `pattern-expert` - Workflow pattern selection and design
 - `framework-advisor` - Architecture decisions
 - `testing-specialist` - Pattern testing strategies

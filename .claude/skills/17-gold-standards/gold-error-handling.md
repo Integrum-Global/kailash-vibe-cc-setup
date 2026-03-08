@@ -1,6 +1,6 @@
 ---
 name: gold-error-handling
-description: "Gold standard for error handling in Kailash applications. Use when asking 'error handling standard', 'handle errors', or 'error patterns'."
+description: "Gold standard for error handling in the Kailash Rust SDK. Use when asking 'error handling standard', 'handle errors', or 'error patterns'."
 ---
 
 # Gold Standard: Error Handling
@@ -11,208 +11,252 @@ description: "Gold standard for error handling in Kailash applications. Use when
 
 ## Error Handling Patterns
 
-### 1. Use Try/Except with Specific Exceptions
+### 1. Use Result and the ? Operator
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-def run_payment_workflow():
-    workflow = WorkflowBuilder()
+async fn run_payment_workflow() -> Result<ValueMap, Box<dyn std::error::Error>> {
+    let mut builder = WorkflowBuilder::new();
 
-    # Critical operation
-    workflow.add_node("HTTPRequestNode", "payment_api", {
-        "url": "https://api.stripe.com/charge",
-        "method": "POST",
-        "timeout": 30,
-    })
+    // Critical operation
+    builder.add_node("HTTPRequestNode", "payment_api", ValueMap::from([
+        ("url".into(), Value::String("https://api.stripe.com/charge".into())),
+        ("method".into(), Value::String("POST".into())),
+        ("timeout".into(), Value::Integer(30)),
+    ]));
 
-    runtime = LocalRuntime()
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry)?; // ? propagates build errors
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await?; // ? propagates execution errors
 
-    try:
-        results, run_id = runtime.execute(workflow.build())
-        return results["payment_api"]
-    except RuntimeError as e:
-        raise PaymentError(f"Payment workflow failed: {e}") from e
+    Ok(result.results["payment_api"].clone())
+}
 ```
 
-### 2. Define Domain Exceptions
+### 2. Define Domain Errors with thiserror
 
-```python
-class PaymentError(Exception):
-    """Base exception for payment operations."""
-    pass
+```rust
+use thiserror::Error;
 
-class InvalidAmountError(PaymentError):
-    def __init__(self, amount):
-        super().__init__(f"Invalid amount: {amount} (must be positive)")
-        self.amount = amount
+#[derive(Error, Debug)]
+pub enum PaymentError {
+    #[error("invalid amount: {0} (must be positive)")]
+    InvalidAmount(f64),
 
-class GatewayTimeoutError(PaymentError):
-    def __init__(self, timeout_secs):
-        super().__init__(f"Payment gateway timeout after {timeout_secs}s")
-        self.timeout_secs = timeout_secs
+    #[error("payment gateway timeout after {timeout_secs}s")]
+    GatewayTimeout { timeout_secs: u64 },
 
-class PaymentDeclinedError(PaymentError):
-    def __init__(self, reason):
-        super().__init__(f"Payment declined: {reason}")
-        self.reason = reason
+    #[error("payment declined: {reason}")]
+    Declined { reason: String },
+
+    #[error("workflow error: {0}")]
+    Workflow(#[from] kailash_core::NodeError),
+
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+}
 ```
 
 ### 3. Validation Before Processing
 
-```python
-def validate_payment_input(inputs: dict) -> None:
-    """Validate payment inputs, raising ValueError on invalid data."""
-    amount = inputs.get("amount")
-    if amount is None or not isinstance(amount, (int, float)):
-        raise ValueError("amount is required and must be a number")
+```rust
+use kailash_core::NodeError;
 
-    if amount <= 0:
-        raise ValueError(f"amount must be positive, got {amount}")
+fn validate_payment_input(inputs: &ValueMap) -> Result<(), NodeError> {
+    let amount = inputs.get("amount")
+        .and_then(|v| v.as_f64())
+        .ok_or_else(|| NodeError::ExecutionFailed {
+            message: "amount is required and must be a number".to_string(),
+            source: None,
+        })?;
 
-    email = inputs.get("email")
-    if not email or not isinstance(email, str):
-        raise ValueError("email is required")
+    if amount <= 0.0 {
+        return Err(NodeError::ExecutionFailed {
+            message: format!("amount must be positive, got {amount}"),
+            source: None,
+        });
+    }
 
-    if "@" not in email:
-        raise ValueError(f"invalid email format: {email}")
+    let email = inputs.get("email")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| NodeError::ExecutionFailed {
+            message: "email is required".to_string(),
+            source: None,
+        })?;
+
+    if !email.contains('@') {
+        return Err(NodeError::ExecutionFailed {
+            message: format!("invalid email format: {email}"),
+            source: None,
+        });
+    }
+
+    Ok(())
+}
 ```
 
 ### 4. Graceful Degradation with Fallback
 
-```python
-import requests
-import logging
-
-logger = logging.getLogger(__name__)
-
-def fetch_with_fallback(primary_url: str, fallback_url: str) -> str:
-    """Fetch from primary URL, falling back to secondary on failure."""
-    try:
-        response = requests.get(primary_url, timeout=10)
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException as e:
-        logger.warning(
-            "Primary API failed (url=%s, error=%s), trying fallback",
-            primary_url, e,
-        )
-        response = requests.get(fallback_url, timeout=10)
-        response.raise_for_status()
-        return response.text
+```rust
+async fn fetch_with_fallback(primary_url: &str, fallback_url: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Try primary
+    match reqwest::get(primary_url).await {
+        Ok(response) if response.status().is_success() => {
+            Ok(response.text().await?)
+        }
+        Ok(response) => {
+            tracing::warn!(
+                status = %response.status(),
+                url = primary_url,
+                "primary API returned error, trying fallback"
+            );
+            let fallback = reqwest::get(fallback_url).await?;
+            Ok(fallback.text().await?)
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                url = primary_url,
+                "primary API failed, trying fallback"
+            );
+            let fallback = reqwest::get(fallback_url).await?;
+            Ok(fallback.text().await?)
+        }
+    }
+}
 ```
 
 ### 5. Structured Error Logging
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-import logging
+```rust
+use tracing::{error, info};
+use kailash_core::runtime::{Runtime, ExecutionResult};
+use kailash_core::error::RuntimeError;
+use kailash_core::workflow::Workflow;
+use kailash_value::ValueMap;
 
-logger = logging.getLogger(__name__)
+async fn execute_workflow_with_logging(
+    runtime: &Runtime,
+    workflow: &Workflow,
+    inputs: ValueMap,
+) -> Result<ExecutionResult, RuntimeError> {
+    info!("starting workflow execution");
 
-def execute_workflow_with_logging(runtime, workflow, inputs=None):
-    """Execute a workflow with structured logging."""
-    logger.info("Starting workflow execution")
-
-    try:
-        results, run_id = runtime.execute(workflow, inputs or {})
-        logger.info(
-            "Workflow completed successfully",
-            extra={"run_id": run_id, "node_count": len(results)},
-        )
-        return results, run_id
-    except Exception as e:
-        logger.error(
-            "Workflow execution failed",
-            extra={"error": str(e)},
-            exc_info=True,
-        )
-        raise
+    match runtime.execute(workflow, inputs).await {
+        Ok(result) => {
+            info!(
+                run_id = %result.run_id,
+                node_count = result.results.len(),
+                "workflow completed successfully"
+            );
+            Ok(result)
+        }
+        Err(e) => {
+            error!(
+                error = %e,
+                "workflow execution failed"
+            );
+            Err(e)
+        }
+    }
+}
 ```
 
-### 6. Retry with Exponential Backoff
+### 6. Node-Level Error Handling
 
-```python
-import time
-import requests
-import logging
+```rust
+impl Node for RobustApiNode {
+    fn execute(
+        &self,
+        inputs: ValueMap,
+        _ctx: &ExecutionContext,
+    ) -> Pin<Box<dyn Future<Output = Result<ValueMap, NodeError>> + Send + '_>> {
+        Box::pin(async move {
+            let url = inputs.get("url")
+                .and_then(|v| v.as_str())
+                .ok_or(NodeError::MissingInput { name: "url".to_string() })?;
 
-logger = logging.getLogger(__name__)
-
-def robust_api_call(url: str, max_retries: int = 3) -> dict:
-    """Call an API with retry and exponential backoff."""
-    last_error = None
-
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(url, timeout=10)
-            if response.ok:
-                return {
-                    "result": response.text,
-                    "status": "success",
+            // Retry with exponential backoff
+            let mut last_error = None;
+            for attempt in 0..3 {
+                match reqwest::get(url).await {
+                    Ok(response) if response.status().is_success() => {
+                        let body = response.text().await.map_err(|e| {
+                            NodeError::ExecutionFailed {
+                                message: format!("failed to read response body: {e}"),
+                                source: None,
+                            }
+                        })?;
+                        return Ok(ValueMap::from([
+                            ("result".into(), Value::String(body.into())),
+                            ("status".into(), Value::String("success".into())),
+                        ]));
+                    }
+                    Ok(response) => {
+                        last_error = Some(format!("HTTP {}", response.status()));
+                    }
+                    Err(e) => {
+                        last_error = Some(e.to_string());
+                    }
                 }
-            last_error = f"HTTP {response.status_code}"
-        except requests.RequestException as e:
-            last_error = str(e)
 
-        # Exponential backoff
-        delay = 0.1 * (2 ** attempt)
-        logger.warning(
-            "Attempt %d failed (error=%s), retrying in %.1fs",
-            attempt + 1, last_error, delay,
-        )
-        time.sleep(delay)
+                // Exponential backoff
+                let delay = std::time::Duration::from_millis(100 * 2u64.pow(attempt));
+                tokio::time::sleep(delay).await;
+            }
 
-    raise RuntimeError(f"All {max_retries} retries exhausted: {last_error}")
+            Err(NodeError::ExecutionFailed {
+                message: format!("all retries exhausted: {}", last_error.unwrap_or_default()),
+                source: None,
+            })
+        })
+    }
+
+    // ... type_name, input_params, output_params
+}
 ```
 
 ## Anti-Patterns
 
-```python
-# BAD: Bare except
-try:
-    results, run_id = runtime.execute(workflow.build())
-except:  # Catches everything including SystemExit!
-    pass
+```rust
+// ❌ BAD: Using unwrap() in production code
+let value = inputs.get("key").unwrap(); // Panics on None!
 
-# BAD: Silently swallowing errors
-try:
-    results, run_id = runtime.execute(workflow.build())
-except Exception:
-    pass  # Error discarded!
+// ❌ BAD: Silently swallowing errors
+let _ = fallible_operation(); // Error discarded!
 
-# BAD: Catch-all with no context
-try:
-    operation()
-except Exception:
-    raise  # What went wrong? No context added.
+// ❌ BAD: Catch-all with no context
+if let Err(_) = operation() { } // What went wrong?
 
-# GOOD: Specific exception with context
-try:
-    results, run_id = runtime.execute(workflow.build())
-except RuntimeError as e:
-    raise WorkflowError(f"Failed to execute payment workflow: {e}") from e
+// ❌ BAD: panic! in async code (tears down tokio runtime)
+panic!("something went wrong");
 
-# GOOD: Logging before re-raise
-try:
-    results, run_id = runtime.execute(workflow.build())
-except RuntimeError as e:
-    logger.error("Workflow failed: %s", e, exc_info=True)
-    raise
+// ✅ GOOD: Use ? operator
+let value = inputs.get("key")
+    .ok_or(NodeError::MissingInput { name: "key".to_string() })?;
+
+// ✅ GOOD: Map errors with context
+let data = std::fs::read_to_string(path)
+    .map_err(|e| NodeError::ExecutionFailed {
+        message: format!("failed to read {path}: {e}"),
+        source: None,
+    })?;
 ```
 
 ## Gold Standard Checklist
 
-- [ ] All fallible operations wrapped in try/except
-- [ ] Custom exception classes defined for domain errors
-- [ ] Specific exceptions caught (never bare `except:`)
+- [ ] All fallible operations return `Result<T, E>`
+- [ ] Custom error types defined with `thiserror`
+- [ ] `?` operator for error propagation (no `unwrap()` in production)
 - [ ] Input validation before processing
 - [ ] Fallback paths for external APIs
-- [ ] Structured error logging with context
+- [ ] Structured error logging with `tracing`
 - [ ] Retry logic with exponential backoff for network calls
-- [ ] Error context preserved (`raise ... from e`)
-- [ ] Error tests in test suite (`pytest.raises`)
+- [ ] Error context preserved (not swallowed)
+- [ ] Error tests in test suite (`assert!(result.is_err())`)
 
-<!-- Trigger Keywords: error handling standard, handle errors, error patterns, error handling gold standard, exceptions, try except -->
+<!-- Trigger Keywords: error handling standard, handle errors, error patterns, error handling gold standard, Result, thiserror -->

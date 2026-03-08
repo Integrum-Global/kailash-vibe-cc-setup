@@ -1,118 +1,44 @@
+# DataFlow Skills Index
+
+Skills for `kailash-dataflow` -- the database framework built on kailash-core and sqlx.
+
+Source: `crates/kailash-dataflow/src/`
+
 ---
-name: dataflow
-description: "Kailash DataFlow - zero-config database framework with automatic model-to-node generation. Use when asking about 'database operations', 'DataFlow', 'database models', 'CRUD operations', 'bulk operations', 'database queries', 'database migrations', 'multi-tenancy', 'multi-instance', 'database transactions', 'PostgreSQL', 'MySQL', 'SQLite', 'MongoDB', 'pgvector', 'vector search', 'document database', 'RAG', 'semantic search', 'existing database', 'database performance', 'database deployment', 'database testing', or 'TDD with databases'. DataFlow is NOT an ORM - it generates 11 workflow nodes per SQL model, 8 nodes for MongoDB, and 3 nodes for vector operations."
----
 
-# Kailash DataFlow
+## Skill Files
 
-Zero-config database framework that generates workflow nodes from model definitions.
+| File                        | Description                                                                                | Use When                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `dataflow-quickstart.md`    | 5-minute introduction: DataFlow::new(), ModelDefinition, register_nodes, DataFlowExpress   | Getting started, first-time setup                                       |
+| `dataflow-models.md`        | ModelDefinition builder API, FieldType, FieldBuilder, field constraints, validation        | Defining models, field configuration, understanding generated nodes     |
+| `dataflow-crud-patterns.md` | All 11 CRUD + bulk node input/output shapes, filter operators, workflow integration        | Building queries, understanding input ValueMap structure, filter syntax |
+| `dataflow-transactions.md`  | DataFlowTransaction, begin/commit/rollback, RAII auto-rollback, SqlConnection, pool config | Transaction management, connection pooling, begin_immediate for SQLite  |
+| `dataflow-multi-tenancy.md` | QueryInterceptor, TenantContext, TenantContextMiddleware, tenant propagation               | Row-level tenant isolation, per-tenant queries, admin bypass            |
+| `dataflow-gotchas.md`       | 15 common pitfalls: PK naming, timestamp auto-management, Create vs Update params          | Debugging errors, understanding validation failures, avoiding mistakes  |
 
-## Overview
+## Quick Navigation
 
-DataFlow is NOT an ORM. It generates **11 workflow nodes per model** that handle CRUD, bulk, count, and upsert operations through the workflow engine.
-
-## Quick Start
-
-```python
-from kailash_dataflow import DataFlow, db
-
-# Connect to database
-df = DataFlow("sqlite:///myapp.db")
-
-# Define a model
-@db.model
-class User:
-    name: str
-    email: str
-    age: int = 0
-
-# Register model nodes
-df.register_model(User)
-
-# Use in workflow
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-
-workflow = WorkflowBuilder()
-workflow.add_node("CreateUser", "create", {
-    "name": "Alice",
-    "email": "alice@example.com",
-    "age": 30,
-})
-runtime = LocalRuntime()
-results, run_id = runtime.execute(workflow.build())
-```
-
-## Reference Documentation
-
-### Core Skills
-
-- **[dataflow-quickstart](dataflow-quickstart.md)** - Setup, connection, model registration
-- **[dataflow-models](dataflow-models.md)** - Model definition with `@db.model`
+- **"How do I create a model?"** -> `dataflow-models.md` or `dataflow-quickstart.md`
+- **"What inputs does CreateUser expect?"** -> `dataflow-crud-patterns.md`
+- **"How do I filter with $gt, $in, $like?"** -> `dataflow-crud-patterns.md`
+- **"How do I do CRUD without workflows?"** -> `dataflow-quickstart.md` (DataFlowExpress section)
+- **"How do I use transactions?"** -> `dataflow-transactions.md`
+- **"How do I add multi-tenancy?"** -> `dataflow-multi-tenancy.md`
+- **"Why is my create/update failing?"** -> `dataflow-gotchas.md`
+- **"What's the difference between Create and Update inputs?"** -> `dataflow-gotchas.md` (gotcha #3)
+- **"How do I configure the connection pool?"** -> `dataflow-transactions.md`
+- **"What SQL dialect differences exist?"** -> `dataflow-gotchas.md` (gotcha #11)
+- **"How do bulk operations work?"** -> `dataflow-crud-patterns.md`
+- **"How do I inspect the database schema at runtime?"** -> `dataflow-quickstart.md` (Inspector section)
+- **"How do I use DataFlow from Python?"** -> `dataflow-quickstart.md` (Python binding section)
 
 ## Key Concepts
 
-### Model-to-Node Generation
-
-Each model generates 11 node types:
-
-| Node Type              | Operation        | Example for `User`        |
-| ---------------------- | ---------------- | ------------------------- |
-| `Create{Model}`        | Insert one       | `CreateUser`              |
-| `Read{Model}`          | Read one by ID   | `ReadUser`                |
-| `Update{Model}`        | Update by filter | `UpdateUser`              |
-| `Delete{Model}`        | Delete by filter | `DeleteUser`              |
-| `List{Model}`          | Query with filter| `ListUser`                |
-| `Count{Model}`         | Count records    | `CountUser`               |
-| `BulkCreate{Model}`    | Insert many      | `BulkCreateUser`          |
-| `BulkUpdate{Model}`    | Update many      | `BulkUpdateUser`          |
-| `BulkDelete{Model}`    | Delete many      | `BulkDeleteUser`          |
-| `Upsert{Model}`        | Insert or update | `UpsertUser`              |
-| `Aggregate{Model}`     | Aggregate query  | `AggregateUser`           |
-
-### DataFlow Is NOT an ORM
-
-- No lazy loading, no relationships, no unit of work
-- Each node = one SQL query (explicit, predictable)
-- Models define schema, not object behavior
-- Generated nodes wrap parameterized SQL
-
-### Deployment Pattern
-
-```python
-from kailash_dataflow import DataFlow, db
-from kailash_nexus import Nexus
-
-@db.model
-class Product:
-    name: str
-    price: float
-    category: str
-
-df = DataFlow("postgresql://localhost/shop")
-df.register_model(Product)
-
-# Deploy with Nexus
-app = Nexus()
-app.register_dataflow(df)
-app.serve(port=3000)
-```
-
-## Install
-
-```bash
-pip install kailash-dataflow
-```
-
-## Related Skills
-
-- **[01-core-sdk](../01-core-sdk/SKILL.md)** - Core workflow patterns
-- **[03-nexus](../03-nexus/SKILL.md)** - API deployment
-- **[04-kaizen](../04-kaizen/SKILL.md)** - AI agents
-
-## Support
-
-For DataFlow help, invoke:
-
-- `dataflow-specialist` - Model design, queries, optimization
-- `pattern-expert` - Workflow patterns with DataFlow
+- **DataFlow is NOT an ORM** -- it generates workflow nodes that wrap sqlx queries
+- **11 nodes per model**: Create, Read, Update, Delete, List, Upsert, Count, BulkCreate, BulkUpdate, BulkDelete, BulkUpsert
+- **Runtime builder API**: `ModelDefinition::new()` with fluent `.field()` calls (not a proc-macro)
+- **Value-based I/O**: All inputs and outputs use `BTreeMap<Arc<str>, Value>` (ValueMap)
+- **Auto dialect detection**: SQLite, PostgreSQL, MySQL from connection URL via `QueryDialect::from_url()`
+- **Two usage modes**: Node-based (via WorkflowBuilder) or direct CRUD (via DataFlowExpress)
+- **Multi-database**: sqlx Any driver with dialect-aware query generation

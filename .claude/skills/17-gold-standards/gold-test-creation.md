@@ -1,303 +1,332 @@
 ---
 name: gold-test-creation
-description: "Test creation standards with 3-tier strategy, fixtures, and real infrastructure requirements. Use when asking 'test standards', 'test creation', 'test guidelines', '3-tier testing', 'test requirements', or 'testing gold standard'."
+description: "Test creation standards for the Kailash Rust SDK with 3-tier strategy, helper functions, and real infrastructure requirements. Use when asking 'test standards', 'test creation', 'test guidelines', '3-tier testing', 'test requirements', or 'testing gold standard'."
 ---
 
 # Gold Standard: Test Creation
 
-Test creation guide with patterns, examples, and best practices for Kailash SDK.
+Test creation guide with patterns, examples, and best practices for the Kailash Rust SDK.
 
 > **Skill Metadata**
 > Category: `gold-standards`
 > Priority: `HIGH`
-> SDK Version: `0.9.25+`
 
 ## Test Creation Pattern
 
 ### Basic Test Structure
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-import pytest
 
-def test_workflow_execution():
-    """Test workflow execution with LocalRuntime."""
-    # Arrange: Build workflow
-    workflow = WorkflowBuilder()
-    workflow.add_node("PythonCodeNode", "process", {
-        "code": "result = {'status': 'success', 'value': 42}"
-    })
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-    # Act: Execute workflow
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
+#[tokio::test]
+async fn test_workflow_execution() {
+    // Arrange: Build workflow
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("JSONTransformNode", "process", ValueMap::from([
+        ("expression".into(), Value::String("@".into())),
+    ]));
 
-    # Assert: Verify results
-    assert results["process"]["result"]["status"] == "success"
-    assert results["process"]["result"]["value"] == 42
-    assert run_id is not None
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+
+    // Act: Execute workflow
+    let inputs = ValueMap::from([
+        ("data".into(), Value::Object(ValueMap::from([
+            ("status".into(), Value::String("success".into())),
+            ("value".into(), Value::Integer(42)),
+        ]))),
+    ]);
+    let result = runtime.execute(&workflow, inputs).await.expect("execution failed");
+
+    // Assert: Verify results
+    assert!(result.results.contains_key("process"));
+    assert!(!result.run_id.is_empty());
+}
 ```
 
-### Async Test Pattern
-```python
-import pytest
-from kailash.runtime import AsyncLocalRuntime
+### Sync Test Pattern
 
-@pytest.mark.asyncio
-async def test_async_workflow_execution():
-    """Test workflow execution with AsyncLocalRuntime."""
-    workflow = WorkflowBuilder()
-    workflow.add_node("PythonCodeNode", "process", {
-        "code": "result = {'status': 'completed'}"
-    })
+```rust
+#[test]
+fn test_workflow_build_validation() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("LogNode", "process", ValueMap::from([
+        ("message".into(), Value::String("test".into())),
+    ]));
 
-    runtime = AsyncLocalRuntime()
-    results = await runtime.execute_workflow_async(workflow.build(), inputs={})
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry);
 
-    assert results["process"]["result"]["status"] == "completed"
+    assert!(workflow.is_ok());
+}
 ```
 
 ## 3-Tier Test Creation
 
 ### Tier 1: Unit Tests
-```python
-# tests/unit/test_workflow_builder.py
-from kailash.workflow.builder import WorkflowBuilder
 
-def test_workflow_builder_creates_workflow():
-    """Test WorkflowBuilder creates valid workflow."""
-    workflow = WorkflowBuilder()
-    workflow.add_node("PythonCodeNode", "node", {"code": "result = 1"})
+```rust
+// crates/kailash-core/src/builder.rs (inline test module)
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    built_workflow = workflow.build()
-    assert built_workflow is not None
-    assert "node" in built_workflow.graph
+    #[test]
+    fn test_workflow_builder_creates_workflow() {
+        let mut builder = WorkflowBuilder::new();
+        builder.add_node("LogNode", "node", ValueMap::new());
 
-def test_workflow_builder_adds_connection():
-    """Test WorkflowBuilder adds connections correctly."""
-    workflow = WorkflowBuilder()
-    workflow.add_node("PythonCodeNode", "source", {"code": "result = {'data': 42}"})
-    workflow.add_node("PythonCodeNode", "target", {"code": "result = data"})
-    workflow.add_connection("source", "result.data", "target", "data")
+        let registry = Arc::new(NodeRegistry::default());
+        let workflow = builder.build(&registry);
+        assert!(workflow.is_ok());
+    }
 
-    built_workflow = workflow.build()
-    assert built_workflow is not None
+    #[test]
+    fn test_workflow_builder_adds_connection() {
+        let mut builder = WorkflowBuilder::new();
+        builder.add_node("LogNode", "source", ValueMap::new());
+        builder.add_node("LogNode", "target", ValueMap::new());
+        builder.connect("source", "output", "target", "input");
+
+        let registry = Arc::new(NodeRegistry::default());
+        let workflow = builder.build(&registry);
+        assert!(workflow.is_ok());
+    }
+}
 ```
 
 ### Tier 2: Integration Tests (NO MOCKING)
-```python
-# tests/integration/test_database_workflows.py
-import pytest
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-from tests.utils.docker_config import get_postgres_connection_string
 
-@pytest.mark.requires_docker
-def test_database_query_workflow():
-    """Test database query with real PostgreSQL - NO MOCKING."""
-    conn_string = get_postgres_connection_string()
+```rust
+// crates/kailash-dataflow/tests/integration/database_workflows.rs
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_database_query_workflow() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
 
-    workflow = WorkflowBuilder()
-    workflow.add_node("SQLDatabaseNode", "db", {
-        "connection_string": conn_string,
-        "query": "SELECT 1 as id, 'test' as name",
-        "operation": "select"
-    })
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("SQLQueryNode", "db", ValueMap::from([
+        ("connection_string".into(), Value::String(db_url.into())),
+        ("query".into(), Value::String("SELECT 1 as id, 'test' as name".into())),
+        ("operation".into(), Value::String("select".into())),
+    ]));
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    assert results["db"]["success"]
-    assert len(results["db"]["data"]) == 1
-    assert results["db"]["data"][0]["name"] == "test"
+    assert!(result.results.contains_key("db"));
+}
 ```
 
 ### Tier 3: E2E Tests
-```python
-# tests/e2e/test_complete_pipeline.py
-import pytest
-from kailash.runtime import AsyncLocalRuntime
 
-@pytest.mark.e2e
-@pytest.mark.requires_docker
-async def test_complete_etl_pipeline():
-    """Test complete ETL pipeline end-to-end."""
-    workflow = build_etl_pipeline()
+```rust
+// tests/e2e/test_complete_pipeline.rs
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_complete_etl_pipeline() {
+    let workflow = build_etl_pipeline();
 
-    runtime = AsyncLocalRuntime()
-    results = await runtime.execute_workflow_async(workflow.build(), inputs={})
+    let registry = Arc::new(NodeRegistry::default());
+    let built = workflow.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&built, ValueMap::new()).await.expect("execution failed");
 
-    # Verify all stages completed
-    assert results["extract"]["status"] == "success"
-    assert results["transform"]["rows_processed"] > 0
-    assert results["load"]["rows_inserted"] > 0
-    assert results["validate"]["errors"] == []
+    // Verify all stages completed
+    assert!(result.results.contains_key("extract"));
+    assert!(result.results.contains_key("transform"));
+    assert!(result.results.contains_key("load"));
+}
 ```
 
-## Test Fixtures
+## Test Helper Functions
 
-### Workflow Fixtures
-```python
-# tests/conftest.py
-import pytest
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime, AsyncLocalRuntime
+### Workflow Helpers
 
-@pytest.fixture
-def workflow_builder():
-    """Fresh WorkflowBuilder for each test."""
-    return WorkflowBuilder()
+```rust
+// tests/common/mod.rs (shared test utilities)
 
-@pytest.fixture
-def sync_runtime():
-    """LocalRuntime instance."""
-    return LocalRuntime()
+/// Create a fresh WorkflowBuilder.
+pub fn new_builder() -> WorkflowBuilder {
+    WorkflowBuilder::new()
+}
 
-@pytest.fixture
-def async_runtime():
-    """AsyncLocalRuntime instance."""
-    return AsyncLocalRuntime()
+/// Create a Runtime with default config.
+pub fn new_runtime() -> (Runtime, Arc<NodeRegistry>) {
+    let registry = Arc::new(NodeRegistry::default());
+    let runtime = Runtime::new(RuntimeConfig::default(), registry.clone());
+    (runtime, registry)
+}
 ```
 
-### Infrastructure Fixtures
-```python
-# tests/conftest.py
-from tests.utils.docker_config import (
-    get_postgres_connection_string,
-    get_redis_url
-)
+### Infrastructure Helpers
 
-@pytest.fixture(scope="session")
-def postgres_connection():
-    """Session-scoped PostgreSQL connection."""
-    return get_postgres_connection_string()
+```rust
+// tests/common/db.rs
+use once_cell::sync::Lazy;
 
-@pytest.fixture(scope="session")
-def redis_connection():
-    """Session-scoped Redis connection."""
-    return get_redis_url()
+/// Shared database pool for integration tests (session-scoped).
+#[cfg(feature = "integration")]
+pub static TEST_POOL: Lazy<sqlx::PgPool> = Lazy::new(|| {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(sqlx::PgPool::connect(&db_url))
+        .expect("failed to connect to test database")
+});
 ```
 
 ## Parametrized Testing
 
-### Testing Both Runtimes
-```python
-import pytest
-import asyncio
-from kailash.runtime import LocalRuntime, AsyncLocalRuntime
+### Testing Multiple Scenarios
 
-@pytest.mark.parametrize("runtime_class", [LocalRuntime, AsyncLocalRuntime])
-def test_workflow_with_both_runtimes(runtime_class, workflow_builder):
-    """Test workflow works with both sync and async runtimes."""
-    workflow_builder.add_node("PythonCodeNode", "node", {
-        "code": "result = {'value': 100}"
-    })
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    runtime = runtime_class()
+    #[test]
+    fn test_value_doubling() {
+        let cases = vec![
+            (Value::Integer(10), Value::Integer(20)),
+            (Value::Integer(5), Value::Integer(10)),
+            (Value::Integer(0), Value::Integer(0)),
+            (Value::Integer(-5), Value::Integer(-10)),
+        ];
 
-    if isinstance(runtime, AsyncLocalRuntime):
-        results = asyncio.run(runtime.execute_workflow_async(workflow_builder.build()))
-    else:
-        results, run_id = runtime.execute(workflow_builder.build())
-
-    assert results["node"]["result"]["value"] == 100
+        for (input, expected) in cases {
+            let result = double_value(&input);
+            assert_eq!(result, expected, "doubling {input:?} should give {expected:?}");
+        }
+    }
+}
 ```
 
-### Testing Multiple Scenarios
-```python
-@pytest.mark.parametrize("input_value,expected", [
-    (10, 20),
-    (5, 10),
-    (0, 0),
-    (-5, -10)
-])
-def test_double_value_workflow(input_value, expected, workflow_builder, sync_runtime):
-    """Test workflow doubles input value correctly."""
-    workflow_builder.add_node("PythonCodeNode", "double", {
-        "code": "result = {'value': input_val * 2}"
-    })
+### Using rstest for Parametrized Tests
 
-    results, run_id = sync_runtime.execute(
-        workflow_builder.build(),
-        parameters={"double": {"input_val": input_value}}
-    )
+```rust
+use rstest::rstest;
 
-    assert results["double"]["result"]["value"] == expected
+#[rstest]
+#[case(10, 20)]
+#[case(5, 10)]
+#[case(0, 0)]
+#[case(-5, -10)]
+fn test_double_value(#[case] input: i64, #[case] expected: i64) {
+    let result = double_value(&Value::Integer(input));
+    assert_eq!(result, Value::Integer(expected));
+}
 ```
 
 ## Error Testing
 
 ### Testing Error Handling
-```python
-import pytest
-from kailash.sdk_exceptions import WorkflowValidationError
 
-def test_missing_required_parameter_raises_error(workflow_builder, sync_runtime):
-    """Test that missing required parameters raise validation error."""
-    workflow_builder.add_node("RequiredParamNode", "node", {})
+```rust
+use kailash_core::NodeError;
 
-    with pytest.raises(WorkflowValidationError, match="missing required inputs"):
-        sync_runtime.execute(workflow_builder.build())
+#[test]
+fn test_missing_required_input_returns_error() {
+    let node = MyCustomNode::from_config(&ValueMap::new());
+
+    let result = tokio_test::block_on(
+        node.execute(ValueMap::new(), &ExecutionContext::default())
+    );
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        NodeError::MissingInput { name } => {
+            assert_eq!(name, "input_data");
+        }
+        other => panic!("expected MissingInput, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_invalid_workflow_returns_build_error() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("NonExistentNode", "bad", ValueMap::new());
+
+    let registry = Arc::new(NodeRegistry::default());
+    let result = builder.build(&registry);
+
+    assert!(result.is_err(), "building with unknown node type should fail");
+}
 ```
 
 ## Test Organization Standards
 
 ### File Naming
+
 ```
-tests/
-├── unit/
-│   └── test_<component>.py        # test_ prefix required
-├── integration/
-│   └── test_<integration>.py      # test_ prefix required
-└── e2e/
-    └── test_<scenario>.py         # test_ prefix required
+crates/kailash-core/
+  src/
+    lib.rs                    # #[cfg(test)] mod tests { ... }
+    builder.rs                # #[cfg(test)] mod tests { ... }
+  tests/
+    integration_test.rs       # #[cfg(feature = "integration")]
+    e2e_test.rs               # #[cfg(feature = "e2e")]
+
+tests/                        # Workspace-level tests
+  common/
+    mod.rs                    # Shared helpers
+  e2e/
+    test_full_pipeline.rs
 ```
 
 ### Test Naming
-```python
-# ✅ GOOD: Descriptive test names
-def test_workflow_execution_with_valid_parameters_returns_success():
-    pass
 
-def test_database_connection_with_invalid_credentials_raises_error():
-    pass
+```rust
+// ✅ GOOD: Descriptive test names (snake_case)
+#[test]
+fn test_workflow_execution_with_valid_parameters_returns_success() { }
 
-# ❌ BAD: Generic test names
-def test_workflow():
-    pass
+#[test]
+fn test_database_connection_with_invalid_credentials_returns_error() { }
 
-def test_db():
-    pass
+// ❌ BAD: Generic test names
+// fn test_workflow() { }
+// fn test_db() { }
 ```
 
 ## Test Standards Checklist
 
-- [ ] Test uses correct runtime (LocalRuntime for sync, AsyncLocalRuntime for async)
-- [ ] Test organized in correct tier (unit/, integration/, e2e/)
+- [ ] Test uses `#[test]` or `#[tokio::test]`
+- [ ] Test organized with correct feature gate (`#[cfg(feature = "integration")]`)
 - [ ] NO MOCKING in integration/e2e tests (use real Docker services)
-- [ ] Clear, descriptive test name
-- [ ] Proper fixtures for test isolation
-- [ ] Error cases tested
+- [ ] Clear, descriptive test name (snake_case)
+- [ ] Proper helper functions for test isolation
+- [ ] Error cases tested (`assert!(result.is_err())`)
 - [ ] Edge cases covered
 - [ ] Parametrized for multiple scenarios (where applicable)
-- [ ] Both runtimes tested (where applicable)
-- [ ] Proper pytest markers (@pytest.mark.requires_docker, @pytest.mark.e2e)
+- [ ] Proper feature gates (`#[cfg(feature = "integration")]`, `#[cfg(feature = "e2e")]`)
 
 ## Documentation References
 
 ### Primary Sources
 
+- [`CLAUDE.md`](../../../../CLAUDE.md) - Development quick reference and test commands
+- [`rules/testing.md`](../../../../rules/testing.md) - Testing rules
+
 ## Related Patterns
 
-- **Testing best practices**: [`testing-best-practices`](../../07-development-guides/testing-best-practices.md)
-- **Test organization**: [`test-organization`](../../07-development-guides/test-organization.md)
 - **Gold testing standard**: [`gold-testing`](gold-testing.md)
+- **Testing strategies**: [`test-3tier-strategy`](../../13-testing-strategies/test-3tier-strategy.md)
+- **Testing patterns**: [`testing-patterns`](../../13-testing-strategies/testing-patterns.md)
 
 ## When to Escalate
 
 Use `testing-specialist` subagent when:
+
 - Complex test infrastructure needed
-- Custom fixtures required
+- Custom helper functions required
 - CI/CD integration issues
 - Performance testing strategy
 

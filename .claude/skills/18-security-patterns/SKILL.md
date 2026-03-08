@@ -49,12 +49,12 @@ workflow.add_node("User_Read", "read_user", {
 
 ```python
 # ❌ WRONG - HTTP in production
-workflow.add_node("APICallNode", "api", {
+workflow.add_node("HTTPRequestNode", "api", {
     "url": "http://api.example.com/data"  # Insecure!
 })
 
 # ✅ CORRECT - HTTPS always
-workflow.add_node("APICallNode", "api", {
+workflow.add_node("HTTPRequestNode", "api", {
     "url": "https://api.example.com/data"
 })
 ```

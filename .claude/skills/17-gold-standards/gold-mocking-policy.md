@@ -1,22 +1,21 @@
 ---
 name: gold-mocking-policy
-description: "Testing policy requiring real infrastructure, no mocking for Tier 2-3 tests. Use when asking 'mocking policy', 'NO MOCKING', 'real infrastructure', 'test policy', 'mock guidelines', or 'testing standards'."
+description: "Testing policy requiring real infrastructure, no mocking for Tier 2-3 tests in the Kailash Rust SDK. Use when asking 'mocking policy', 'NO MOCKING', 'real infrastructure', 'test policy', 'mock guidelines', or 'testing standards'."
 ---
 
 # Gold Standard: NO MOCKING Policy
 
-NO MOCKING policy for integration and E2E tests - use real infrastructure with LocalRuntime and AsyncLocalRuntime.
+NO MOCKING policy for integration and E2E tests -- use real infrastructure with the unified Kailash Runtime.
 
 > **Skill Metadata**
 > Category: `gold-standards`
 > Priority: `CRITICAL`
-> SDK Version: `0.9.25+`
 
 ## Core Policy
 
 ### NO MOCKING in Tiers 2-3
 
-**Tier 1 (Unit Tests)**: Mocking ALLOWED for external dependencies
+**Tier 1 (Unit Tests)**: Trait-based test doubles ALLOWED for external dependencies
 **Tier 2 (Integration Tests)**: NO MOCKING - Use real Docker services
 **Tier 3 (E2E Tests)**: NO MOCKING - Use real infrastructure
 
@@ -25,275 +24,258 @@ NO MOCKING policy for integration and E2E tests - use real infrastructure with L
 1. **Mocks hide real integration issues** - Type mismatches, connection errors, timing issues
 2. **Real infrastructure catches actual bugs** - Validates actual behavior, not assumptions
 3. **Production-like testing prevents surprises** - Discovers deployment issues early
-4. **Runtime validation** - Tests LocalRuntime and AsyncLocalRuntime with real services
+4. **Runtime validation** - Tests the unified Runtime with real services
 5. **Better confidence** - Tests prove the code works with real systems
 
 ## What to Use Instead
 
-### Tier 1: Unit Tests (Mocking Allowed)
-```python
-from unittest.mock import patch
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+### Tier 1: Unit Tests (Test Doubles Allowed)
 
-# ✅ ALLOWED in unit tests
-@patch('requests.get')
-def test_node_logic(mock_get):
-    """Unit test can mock external dependencies."""
-    mock_get.return_value.status_code = 200
-    # Test node logic without real API
+```rust
+// ✅ ALLOWED in unit tests: trait-based test doubles
+trait HttpClient: Send + Sync {
+    fn get(&self, url: &str) -> Result<Response, Error>;
+}
+
+struct FakeHttpClient;
+impl HttpClient for FakeHttpClient {
+    fn get(&self, _url: &str) -> Result<Response, Error> {
+        Ok(Response { status: 200, body: r#"{"status":"success"}"#.into() })
+    }
+}
+
+#[test]
+fn test_node_logic_with_fake_client() {
+    let client = FakeHttpClient;
+    let result = process_with_client(&client, "test input");
+    assert!(result.is_ok());
+}
 ```
 
 ### Tier 2: Integration Tests (NO MOCKING)
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-from tests.utils.docker_config import get_postgres_connection_string
-import pytest
 
-# ✅ CORRECT: Use real Docker PostgreSQL
-@pytest.mark.requires_docker
-def test_database_integration():
-    """Integration test with real PostgreSQL - NO MOCKING."""
-    conn_string = get_postgres_connection_string()
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-    workflow = WorkflowBuilder()
-    workflow.add_node("SQLDatabaseNode", "db", {
-        "connection_string": conn_string,
-        "query": "SELECT 1 as value",
-        "operation": "select"
-    })
+// ✅ CORRECT: Use real Docker PostgreSQL
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_database_integration() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("SQLQueryNode", "db", ValueMap::from([
+        ("connection_string".into(), Value::String(db_url.into())),
+        ("query".into(), Value::String("SELECT 1 as value".into())),
+        ("operation".into(), Value::String("select".into())),
+    ]));
 
-    assert results["db"]["success"]
-    assert len(results["db"]["data"]) > 0
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
+
+    assert!(result.results.contains_key("db"));
+}
 
 
-# ❌ WRONG: Mocking in integration tests
-# from unittest.mock import patch
-# @patch('psycopg2.connect')  # DON'T DO THIS
-# def test_database_integration(mock_connect):
-#     mock_connect.return_value = Mock(...)
+// ❌ WRONG: Using mockall in integration tests
+// use mockall::automock;
+// #[automock]
+// trait Database { fn query(&self) -> Result<Vec<Row>>; }
+// fn test_database_integration(mock: MockDatabase) { ... }
 ```
 
 ### Tier 3: E2E Tests (NO MOCKING)
-```python
-import pytest
-from kailash.runtime import AsyncLocalRuntime
 
-# ✅ CORRECT: Use real services for E2E
-@pytest.mark.e2e
-@pytest.mark.requires_docker
-async def test_complete_pipeline():
-    """E2E test with real infrastructure - NO MOCKING."""
-    workflow = build_complete_etl_pipeline()
+```rust
+// ✅ CORRECT: Use real services for E2E
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_complete_pipeline() {
+    let mut builder = WorkflowBuilder::new();
+    // Build complete ETL pipeline with real nodes...
 
-    runtime = AsyncLocalRuntime()
-    results = await runtime.execute_workflow_async(workflow.build(), inputs={})
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    # All stages use real services
-    assert results["extract"]["status"] == "success"
-    assert results["transform"]["rows_processed"] > 0
-    assert results["load"]["rows_inserted"] > 0
+    // All stages use real services
+    assert!(result.results.contains_key("extract"));
+    assert!(result.results.contains_key("transform"));
+    assert!(result.results.contains_key("load"));
+}
 ```
 
 ## Real Infrastructure Examples
 
 ### Real PostgreSQL Database
-```python
-from tests.utils.docker_config import get_postgres_connection_string
 
-def test_with_real_postgres():
-    """Use real PostgreSQL from Docker."""
-    conn_string = get_postgres_connection_string()
+```rust
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_with_real_postgres() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    let pool = sqlx::PgPool::connect(&db_url).await.expect("connect failed");
 
-    workflow = WorkflowBuilder()
-    workflow.add_node("SQLDatabaseNode", "db", {
-        "connection_string": conn_string,
-        "query": "SELECT * FROM users",
-        "operation": "select"
-    })
+    let row = sqlx::query!("SELECT 1 as value")
+        .fetch_one(&pool)
+        .await
+        .expect("query failed");
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
-
-    assert results["db"]["success"]
+    assert_eq!(row.value, Some(1));
+}
 ```
 
 ### Real Redis Cache
-```python
-from tests.utils.docker_config import get_redis_url
-import redis
 
-def test_with_real_redis():
-    """Use real Redis from Docker."""
-    redis_url = get_redis_url()
-    redis_client = redis.from_url(redis_url)
+```rust
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_with_real_redis() {
+    dotenvy::dotenv().ok();
+    let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL required");
+    let client = redis::Client::open(redis_url).expect("redis client failed");
+    let mut conn = client.get_multiplexed_async_connection().await.expect("connect failed");
 
-    # Test with real Redis
-    redis_client.set('test_key', 'test_value')
-    assert redis_client.get('test_key') == b'test_value'
+    redis::cmd("SET").arg("test_key").arg("test_value")
+        .exec_async(&mut conn).await.expect("set failed");
+
+    let value: String = redis::cmd("GET").arg("test_key")
+        .query_async(&mut conn).await.expect("get failed");
+
+    assert_eq!(value, "test_value");
+}
 ```
 
-### Real API Service
-```python
-from tests.utils.docker_config import MOCK_API_CONFIG
-import requests
+### Real HTTP API
 
-def test_with_real_api():
-    """Use real mock-api Docker service."""
-    workflow = WorkflowBuilder()
-    workflow.add_node("HTTPRequestNode", "api", {
-        "url": f"{MOCK_API_CONFIG['base_url']}/v1/users",
-        "method": "GET"
-    })
+```rust
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_with_real_api() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("HTTPRequestNode", "api", ValueMap::from([
+        ("url".into(), Value::String("http://localhost:8888/v1/users".into())),
+        ("method".into(), Value::String("GET".into())),
+    ]));
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    assert results["api"]["status_code"] == 200
-```
-
-## Testing Both Runtimes with Real Services
-
-```python
-import pytest
-import asyncio
-from kailash.runtime import LocalRuntime, AsyncLocalRuntime
-from tests.utils.docker_config import get_postgres_connection_string
-
-@pytest.mark.parametrize("runtime_class", [LocalRuntime, AsyncLocalRuntime])
-@pytest.mark.requires_docker
-def test_database_with_both_runtimes(runtime_class):
-    """Test database operations with both runtimes - NO MOCKING."""
-    conn_string = get_postgres_connection_string()
-
-    workflow = WorkflowBuilder()
-    workflow.add_node("SQLDatabaseNode", "db", {
-        "connection_string": conn_string,
-        "query": "SELECT 1 as value",
-        "operation": "select"
-    })
-
-    runtime = runtime_class()
-
-    if isinstance(runtime, AsyncLocalRuntime):
-        results = asyncio.run(runtime.execute_workflow_async(workflow.build(), inputs={}))
-    else:
-        results, run_id = runtime.execute(workflow.build())
-
-    assert results["db"]["success"]
+    assert!(result.results.contains_key("api"));
+}
 ```
 
 ## Available Docker Services
 
 ### Test Infrastructure
+
 ```bash
 # Start all test services
-cd tests/utils
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f tests/docker-compose.test.yml up -d
 
 # Available services:
-# - PostgreSQL: localhost:5434
+# - PostgreSQL: localhost:5433
 # - Redis: localhost:6380
-# - Ollama: localhost:11435
-# - MySQL: localhost:3307
-# - MongoDB: localhost:27017
-# - Mock API: localhost:8888
+# - Elasticsearch: localhost:9201
 ```
 
-### Using Docker Config
-```python
-from tests.utils.docker_config import (
-    get_postgres_connection_string,  # PostgreSQL connection
-    get_redis_url,                   # Redis URL
-    OLLAMA_CONFIG,                   # Ollama config
-    MOCK_API_CONFIG                  # Mock API config
-)
+### Environment Configuration
+
+```bash
+# Set in .env for integration tests:
+DATABASE_URL=postgresql://test:test@localhost:5433/test_db
+REDIS_URL=redis://localhost:6380/0
 ```
 
 ## Common Violations and Fixes
 
-### Violation 1: Mocking Database Connections
-```python
-# ❌ WRONG: Mocking database in integration test
-from unittest.mock import patch, Mock
+### Violation 1: Using mockall in Integration Tests
 
-@patch('psycopg2.connect')
-def test_database_query(mock_connect):
-    mock_connect.return_value = Mock(...)
-    # BAD - mocking hides real connection issues
+```rust
+// ❌ WRONG: mockall in integration test
+// use mockall::automock;
+// #[automock] trait Database { ... }
 
-# ✅ CORRECT: Use real database
-from tests.utils.docker_config import get_postgres_connection_string
-
-@pytest.mark.requires_docker
-def test_database_query():
-    conn_string = get_postgres_connection_string()
-    # Use real PostgreSQL connection
+// ✅ CORRECT: Use real database
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_database_query() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    let pool = sqlx::PgPool::connect(&db_url).await.expect("connect failed");
+    // Use real PostgreSQL connection
+}
 ```
 
-### Violation 2: Mocking HTTP Requests
-```python
-# ❌ WRONG: Mocking requests in integration test
-from unittest.mock import patch
+### Violation 2: Fake HTTP Clients in Integration Tests
 
-@patch('requests.get')
-def test_api_call(mock_get):
-    mock_get.return_value.status_code = 200
-    # BAD - mocking hides real API issues
+```rust
+// ❌ WRONG: fake HTTP client in integration test
+// struct FakeClient; // WRONG in Tier 2-3
 
-# ✅ CORRECT: Use real mock-api service
-from tests.utils.docker_config import MOCK_API_CONFIG
-
-@pytest.mark.requires_docker
-def test_api_call():
-    url = f"{MOCK_API_CONFIG['base_url']}/v1/users"
-    response = requests.get(url)
-    assert response.status_code == 200
+// ✅ CORRECT: Use real HTTP client
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_api_call() {
+    let client = reqwest::Client::new();
+    let response = client.get("http://localhost:8888/v1/users")
+        .send()
+        .await
+        .expect("request failed");
+    assert_eq!(response.status(), 200);
+}
 ```
 
-### Violation 3: Mocking Runtime Behavior
-```python
-# ❌ WRONG: Mocking runtime behavior
-from unittest.mock import patch
+### Violation 3: Faking Runtime Behavior
 
-@patch('kailash.runtime.local.LocalRuntime.execute')
-def test_workflow(mock_execute):
-    mock_execute.return_value = ({}, 'run_123')
-    # BAD - not testing real runtime behavior
+```rust
+// ❌ WRONG: Not testing real runtime behavior
+// let fake_result = ExecutionResult { ... }; // WRONG
 
-# ✅ CORRECT: Use real runtime
-from kailash.runtime import LocalRuntime
+// ✅ CORRECT: Use real runtime
+#[tokio::test]
+async fn test_workflow() {
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("LogNode", "node", ValueMap::from([
+        ("message".into(), Value::String("test".into())),
+    ]));
 
-def test_workflow():
-    workflow = WorkflowBuilder()
-    workflow.add_node("PythonCodeNode", "node", {"code": "result = 42"})
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
-
-    assert results["node"]["result"] == 42
+    assert!(result.results.contains_key("node"));
+}
 ```
 
 ## Policy Summary
 
-| Test Tier | Mocking Policy | Infrastructure | Runtime |
-|-----------|---------------|----------------|---------|
-| **Tier 1: Unit** | ✅ ALLOWED | In-memory, mocked | LocalRuntime |
-| **Tier 2: Integration** | ❌ NO MOCKING | Real Docker services | LocalRuntime or AsyncLocalRuntime |
-| **Tier 3: E2E** | ❌ NO MOCKING | Real infrastructure | AsyncLocalRuntime (typical) |
+| Test Tier               | Mocking Policy                      | Infrastructure       | Execution                                            |
+| ----------------------- | ----------------------------------- | -------------------- | ---------------------------------------------------- |
+| **Tier 1: Unit**        | ✅ Trait-based test doubles ALLOWED | In-memory            | `#[test]` / `#[tokio::test]`                         |
+| **Tier 2: Integration** | ❌ NO MOCKING                       | Real Docker services | `#[tokio::test]` + `#[cfg(feature = "integration")]` |
+| **Tier 3: E2E**         | ❌ NO MOCKING                       | Real infrastructure  | `#[tokio::test]` + `#[cfg(feature = "e2e")]`         |
 
 ## Documentation References
 
 ### Primary Sources
 
+- [`rules/testing.md`](../../../../rules/testing.md) - Testing rules
+- [`CLAUDE.md`](../../../../CLAUDE.md) - Development quick reference
+
 ## Related Patterns
 
-- **Testing best practices**: [`testing-best-practices`](../../07-development-guides/testing-best-practices.md)
-- **Test organization**: [`test-organization`](../../07-development-guides/test-organization.md)
 - **Gold testing standard**: [`gold-testing`](gold-testing.md)
+- **Testing strategies**: [`test-3tier-strategy`](../../13-testing-strategies/test-3tier-strategy.md)
 
-<!-- Trigger Keywords: mocking policy, NO MOCKING, real infrastructure, test policy, mock guidelines, testing standards -->
+<!-- Trigger Keywords: mocking policy, NO MOCKING, real infrastructure, test policy, mock guidelines, testing standards, mockall -->

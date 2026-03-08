@@ -17,6 +17,7 @@ Retrieval Augmented Generation patterns for AI-powered document search and Q&A.
 ## Quick Reference
 
 RAG workflow components:
+
 - **Document ingestion** - Load and chunk documents
 - **Embedding generation** - Convert text to vectors
 - **Vector storage** - Store in vector database
@@ -25,228 +26,296 @@ RAG workflow components:
 
 ## Pattern 1: Document Ingestion Pipeline
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. Load document
-workflow.add_node("DocumentProcessorNode", "load_doc", {
-    "file_path": "{{input.document_path}}",
-    "extract_metadata": True
-})
+// 1. Load document
+builder.add_node("DocumentProcessorNode", "load_doc", ValueMap::from([
+    ("file_path".into(), Value::String("{{input.document_path}}".into())),
+    ("extract_metadata".into(), Value::Bool(true)),
+]));
 
-# 2. Split into chunks
-workflow.add_node("TextChunkerNode", "chunk_text", {
-    "input": "{{load_doc.content}}",
-    "chunk_size": 512,
-    "chunk_overlap": 50,
-    "strategy": "semantic"  # Preserve sentence boundaries
-})
+// 2. Split into chunks
+builder.add_node("TextChunkerNode", "chunk_text", ValueMap::from([
+    ("input".into(), Value::String("{{load_doc.content}}".into())),
+    ("chunk_size".into(), Value::Integer(512)),
+    ("chunk_overlap".into(), Value::Integer(50)),
+    ("strategy".into(), Value::String("semantic".into())), // Preserve sentence boundaries
+]));
 
-# 3. Generate embeddings
-workflow.add_node("EmbeddingNode", "generate_embeddings", {
-    "provider": "openai",
-    "model": "text-embedding-3-small",
-    "text": "{{chunk_text.chunks}}"
-})
+// 3. Generate embeddings
+let embedding_model = std::env::var("EMBEDDING_MODEL").expect("EMBEDDING_MODEL in .env");
+builder.add_node("EmbeddingNode", "generate_embeddings", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("EMBEDDING_PROVIDER").expect("EMBEDDING_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(embedding_model.into())),
+    ("text".into(), Value::String("{{chunk_text.chunks}}".into())),
+]));
 
-# 4. Store in vector database
-workflow.add_node("VectorStoreNode", "store_vectors", {
-    "collection": "documents",
-    "vectors": "{{generate_embeddings.embeddings}}",
-    "metadata": {
-        "doc_id": "{{input.document_id}}",
-        "chunk_index": "{{chunk_text.indices}}",
-        "text": "{{chunk_text.chunks}}"
-    }
-})
+// 4. Store in vector database
+builder.add_node("VectorStoreNode", "store_vectors", ValueMap::from([
+    ("collection".into(), Value::String("documents".into())),
+    ("vectors".into(), Value::String("{{generate_embeddings.embeddings}}".into())),
+    ("metadata".into(), Value::Object(ValueMap::from([
+        ("doc_id".into(), Value::String("{{input.document_id}}".into())),
+        ("chunk_index".into(), Value::String("{{chunk_text.indices}}".into())),
+        ("text".into(), Value::String("{{chunk_text.chunks}}".into())),
+    ]))),
+]));
 
-workflow.add_connection("load_doc", "content", "chunk_text", "input")
-workflow.add_connection("chunk_text", "chunks", "generate_embeddings", "text")
-workflow.add_connection("generate_embeddings", "embeddings", "store_vectors", "vectors")
+builder.connect("load_doc", "content", "chunk_text", "input");
+builder.connect("chunk_text", "chunks", "generate_embeddings", "text");
+builder.connect("generate_embeddings", "embeddings", "store_vectors", "vectors");
 
-with LocalRuntime() as runtime:
-    results, run_id = runtime.execute(workflow.build(), inputs={
-        "document_path": "docs/manual.pdf",
-        "document_id": "doc_001"
-    })
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::from([
+    ("document_path".into(), Value::String("docs/manual.pdf".into())),
+    ("document_id".into(), Value::String("doc_001".into())),
+])).await?;
 ```
 
 ## Pattern 2: RAG Query Pipeline
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Generate query embedding
-workflow.add_node("EmbeddingNode", "query_embedding", {
-    "provider": "openai",
-    "model": "text-embedding-3-small",
-    "text": "{{input.query}}"
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Vector similarity search
-workflow.add_node("VectorSearchNode", "search_similar", {
-    "collection": "documents",
-    "query_vector": "{{query_embedding.embedding}}",
-    "top_k": 5,
-    "min_score": 0.7
-})
+// 1. Generate query embedding
+let embedding_model = std::env::var("EMBEDDING_MODEL").expect("EMBEDDING_MODEL in .env");
+builder.add_node("EmbeddingNode", "query_embedding", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("EMBEDDING_PROVIDER").expect("EMBEDDING_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(embedding_model.into())),
+    ("text".into(), Value::String("{{input.query}}".into())),
+]));
 
-# 3. Rerank results (optional)
-workflow.add_node("RerankNode", "rerank", {
-    "query": "{{input.query}}",
-    "documents": "{{search_similar.results}}",
-    "model": "rerank-english-v2.0"
-})
+// 2. Vector similarity search
+builder.add_node("VectorSearchNode", "search_similar", ValueMap::from([
+    ("collection".into(), Value::String("documents".into())),
+    ("query_vector".into(), Value::String("{{query_embedding.embedding}}".into())),
+    ("top_k".into(), Value::Integer(5)),
+    ("min_score".into(), Value::Float(0.7)),
+]));
 
-# 4. Build context prompt
-workflow.add_node("TransformNode", "build_prompt", {
-    "input": "{{rerank.documents}}",
-    "transformation": """
-        context = '\n\n'.join([doc['text'] for doc in input])
-        return f'''Answer the question based on this context:
+// 3. Rerank results (optional)
+builder.add_node("RerankNode", "rerank", ValueMap::from([
+    ("query".into(), Value::String("{{input.query}}".into())),
+    ("documents".into(), Value::String("{{search_similar.results}}".into())),
+    ("model".into(), Value::String("rerank-english-v2.0".into())),
+]));
 
-Context:
-{context}
+// 4. Build context prompt
+builder.add_node("TransformNode", "build_prompt", ValueMap::from([
+    ("input".into(), Value::String("{{rerank.documents}}".into())),
+    ("transformation".into(), Value::String(
+        "join_context(input, 'Answer the question based on this context:', '{{input.query}}')".into()
+    )),
+]));
 
-Question: {{input.query}}
+// 5. Generate answer with LLM
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+builder.add_node("LLMNode", "generate_answer", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("LLM_PROVIDER").expect("LLM_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(llm_model.into())),
+    ("prompt".into(), Value::String("{{build_prompt.result}}".into())),
+    ("temperature".into(), Value::Float(0.3)),
+]));
 
-Answer:'''
-    """
-})
-
-# 5. Generate answer with LLM
-workflow.add_node("LLMNode", "generate_answer", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": "{{build_prompt.result}}",
-    "temperature": 0.3
-})
-
-workflow.add_connection("query_embedding", "embedding", "search_similar", "query_vector")
-workflow.add_connection("search_similar", "results", "rerank", "documents")
-workflow.add_connection("rerank", "documents", "build_prompt", "input")
-workflow.add_connection("build_prompt", "result", "generate_answer", "prompt")
+builder.connect("query_embedding", "embedding", "search_similar", "query_vector");
+builder.connect("search_similar", "results", "rerank", "documents");
+builder.connect("rerank", "documents", "build_prompt", "input");
+builder.connect("build_prompt", "result", "generate_answer", "prompt");
 ```
 
 ## Pattern 3: Multi-Document RAG
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Query embedding
-workflow.add_node("EmbeddingNode", "query_embed", {
-    "provider": "openai",
-    "model": "text-embedding-3-small",
-    "text": "{{input.query}}"
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Search multiple collections in parallel
-workflow.add_node("VectorSearchNode", "search_docs", {
-    "collection": "documents",
-    "query_vector": "{{query_embed.embedding}}",
-    "top_k": 3
-})
+// 1. Query embedding
+let embedding_model = std::env::var("EMBEDDING_MODEL").expect("EMBEDDING_MODEL in .env");
+builder.add_node("EmbeddingNode", "query_embed", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("EMBEDDING_PROVIDER").expect("EMBEDDING_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(embedding_model.into())),
+    ("text".into(), Value::String("{{input.query}}".into())),
+]));
 
-workflow.add_node("VectorSearchNode", "search_code", {
-    "collection": "codebase",
-    "query_vector": "{{query_embed.embedding}}",
-    "top_k": 3
-})
+// 2. Search multiple collections in parallel
+builder.add_node("VectorSearchNode", "search_docs", ValueMap::from([
+    ("collection".into(), Value::String("documents".into())),
+    ("query_vector".into(), Value::String("{{query_embed.embedding}}".into())),
+    ("top_k".into(), Value::Integer(3)),
+]));
 
-workflow.add_node("VectorSearchNode", "search_api", {
-    "collection": "api_docs",
-    "query_vector": "{{query_embed.embedding}}",
-    "top_k": 3
-})
+builder.add_node("VectorSearchNode", "search_code", ValueMap::from([
+    ("collection".into(), Value::String("codebase".into())),
+    ("query_vector".into(), Value::String("{{query_embed.embedding}}".into())),
+    ("top_k".into(), Value::Integer(3)),
+]));
 
-# 3. Merge and rerank all results
-workflow.add_node("MergeNode", "merge_results", {
-    "inputs": [
-        "{{search_docs.results}}",
-        "{{search_code.results}}",
-        "{{search_api.results}}"
-    ],
-    "strategy": "combine"
-})
+builder.add_node("VectorSearchNode", "search_api", ValueMap::from([
+    ("collection".into(), Value::String("api_docs".into())),
+    ("query_vector".into(), Value::String("{{query_embed.embedding}}".into())),
+    ("top_k".into(), Value::Integer(3)),
+]));
 
-workflow.add_node("RerankNode", "rerank_all", {
-    "query": "{{input.query}}",
-    "documents": "{{merge_results.combined}}",
-    "top_k": 5
-})
+// 3. Merge and rerank all results
+builder.add_node("MergeNode", "merge_results", ValueMap::from([
+    ("strategy".into(), Value::String("combine".into())),
+]));
 
-# 4. Generate comprehensive answer
-workflow.add_node("LLMNode", "generate", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": """Answer using context from docs, code, and API:
+builder.add_node("RerankNode", "rerank_all", ValueMap::from([
+    ("query".into(), Value::String("{{input.query}}".into())),
+    ("documents".into(), Value::String("{{merge_results.combined}}".into())),
+    ("top_k".into(), Value::Integer(5)),
+]));
 
-Context: {{rerank_all.documents}}
+// 4. Generate comprehensive answer
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+builder.add_node("LLMNode", "generate", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("LLM_PROVIDER").expect("LLM_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(llm_model.into())),
+    ("prompt".into(), Value::String(
+        "Answer using context from docs, code, and API:\n\n\
+         Context: {{rerank_all.documents}}\n\n\
+         Question: {{input.query}}\n\n\
+         Provide a comprehensive answer with examples.".into()
+    )),
+]));
 
-Question: {{input.query}}
+// Parallel searches
+builder.connect("query_embed", "embedding", "search_docs", "query_vector");
+builder.connect("query_embed", "embedding", "search_code", "query_vector");
+builder.connect("query_embed", "embedding", "search_api", "query_vector");
 
-Provide a comprehensive answer with examples."""
-})
+builder.connect("search_docs", "results", "merge_results", "input_docs");
+builder.connect("search_code", "results", "merge_results", "input_code");
+builder.connect("search_api", "results", "merge_results", "input_api");
 
-# Parallel searches
-workflow.add_connection("query_embed", "embedding", "search_docs", "query_vector")
-workflow.add_connection("query_embed", "embedding", "search_code", "query_vector")
-workflow.add_connection("query_embed", "embedding", "search_api", "query_vector")
-
-workflow.add_connection("search_docs", "results", "merge_results", "input_docs")
-workflow.add_connection("search_code", "results", "merge_results", "input_code")
-workflow.add_connection("search_api", "results", "merge_results", "input_api")
-
-workflow.add_connection("merge_results", "combined", "rerank_all", "documents")
-workflow.add_connection("rerank_all", "documents", "generate", "context")
+builder.connect("merge_results", "combined", "rerank_all", "documents");
+builder.connect("rerank_all", "documents", "generate", "context");
 ```
 
 ## Pattern 4: Conversational RAG with Memory
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Load conversation history
-workflow.add_node("DatabaseQueryNode", "load_history", {
-    "query": """
-        SELECT role, content FROM messages
-        WHERE conversation_id = ?
-        ORDER BY created_at DESC LIMIT 5
-    """,
-    "parameters": ["{{input.conversation_id}}"]
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Build conversation context
-workflow.add_node("TransformNode", "build_context", {
-    "input": "{{load_history.results}}",
-    "transformation": "'\n'.join([f'{m.role}: {m.content}' for m in input])"
-})
+// 1. Load conversation history
+builder.add_node("DatabaseQueryNode", "load_history", ValueMap::from([
+    ("query".into(), Value::String(
+        "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 5".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{input.conversation_id}}".into()),
+    ])),
+]));
 
-# 3. Embed query with context
-workflow.add_node("EmbeddingNode", "embed_query", {
-    "provider": "openai",
-    "model": "text-embedding-3-small",
-    "text": "{{input.query}} Context: {{build_context.context}}"
-})
+// 2. Build conversation context
+builder.add_node("TransformNode", "build_context", ValueMap::from([
+    ("input".into(), Value::String("{{load_history.results}}".into())),
+    ("transformation".into(), Value::String("join_messages(input, 'role', 'content')".into())),
+]));
 
-# 4. Vector search
-workflow.add_node("VectorSearchNode", "search", {
-    "collection": "documents",
-    "query_vector": "{{embed_query.embedding}}",
-    "top_k": 5
-})
+// 3. Embed query with context
+let embedding_model = std::env::var("EMBEDDING_MODEL").expect("EMBEDDING_MODEL in .env");
+builder.add_node("EmbeddingNode", "embed_query", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("EMBEDDING_PROVIDER").expect("EMBEDDING_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(embedding_model.into())),
+    ("text".into(), Value::String("{{input.query}} Context: {{build_context.context}}".into())),
+]));
 
-# 5. Generate answer with history
-workflow.add_node("LLMNode", "generate", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": """Conversation History:
-{{build_context.context}}
+// 4. Vector search
+builder.add_node("VectorSearchNode", "search", ValueMap::from([
+    ("collection".into(), Value::String("documents".into())),
+    ("query_vector".into(), Value::String("{{embed_query.embedding}}".into())),
+    ("top_k".into(), Value::Integer(5)),
+]));
 
-Relevant Documents:
-{{search.results}}
+// 5. Generate answer with history
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+builder.add_node("LLMNode", "generate", ValueMap::from([
+    ("provider".into(), Value::String(
+        std::env::var("LLM_PROVIDER").expect("LLM_PROVIDER in .env").into()
+    )),
+    ("model".into(), Value::String(llm_model.into())),
+    ("prompt".into(), Value::String(
+        "Conversation History:\n{{build_context.context}}\n\n\
+         Relevant Documents:\n{{search.results}}\n\n\
+         User: {{input.query}}\n\n\
+         Provide a helpful answer based on the conversation and documents.".into()
+    )),
+]));
 
-User: {{input.query}}
+// 6. Save to conversation history
+builder.add_node("DatabaseExecuteNode", "save_message", ValueMap::from([
+    ("query".into(), Value::String(
+        "INSERT INTO messages (conversation_id, role, content) VALUES (?, 'assistant', ?)".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{input.conversation_id}}".into()),
+        Value::String("{{generate.response}}".into()),
+    ])),
+]));
+
+builder.connect("load_history", "results", "build_context", "input");
+builder.connect("build_context", "context", "embed_query", "text");
+builder.connect("embed_query", "embedding", "search", "query_vector");
+builder.connect("search", "results", "generate", "context");
+builder.connect("generate", "response", "save_message", "parameters");
+```
+
+## Best Practices
+
+1. **Chunk size** - 256-1024 tokens, overlap 10-20%
+2. **Embedding models** - Match query and document embeddings
+3. **Reranking** - Improve precision after initial retrieval
+4. **Context window** - Respect LLM context limits
+5. **Metadata filtering** - Pre-filter by document type/date
+6. **Conversation memory** - Include recent history for context
+
+## Common Pitfalls
+
+- **Too large chunks** - Diluted relevance
+- **No overlap** - Missing context at boundaries
+- **Wrong embedding model** - Poor similarity results
+- **No reranking** - Low precision
+- **Context overflow** - Exceeding LLM limits
+
+## Related Skills
+
+- **AI Nodes**: [`nodes-ai-reference`](../nodes/nodes-ai-reference.md)
+- **Document Processing**: [`workflow-pattern-ai-document`](workflow-pattern-ai-document.md)
+- **Kaizen Agents**: [`kaizen-specialist`](../../04-kaizen/kaizen-specialist.md)
+
+<!-- Trigger Keywords: RAG, retrieval augmented, vector search, semantic search, document Q&A, embeddings -->

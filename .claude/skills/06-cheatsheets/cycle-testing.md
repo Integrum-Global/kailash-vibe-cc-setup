@@ -151,7 +151,7 @@ result = {
          .build()
 
     runtime = LocalRuntime()
-    results, run_id = runtime.execute(built_workflow, parameters={
+    results, run_id = runtime.execute(built_workflow, inputs={
         "improver": {"quality": 0.0, "target": 0.8}
     })
 
@@ -201,7 +201,7 @@ result = {
          .build()
 
     runtime = LocalRuntime()
-    results, run_id = runtime.execute(built_workflow, parameters={
+    results, run_id = runtime.execute(built_workflow, inputs={
         "processor": {"data": [1, 2, 3]},
         "switch": {"condition_field": "should_exit", "operator": "==", "value": True}
     })

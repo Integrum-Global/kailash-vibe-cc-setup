@@ -8,11 +8,11 @@ description: "Kubernetes deployment basics. Use when asking 'kubernetes deployme
 > **Skill Metadata**
 > Category: `deployment`
 > Priority: `LOW`
-> SDK Version: `0.9.25+`
 
 ## Kubernetes Manifests
 
 ### Deployment
+
 ```yaml
 # deployment.yaml
 apiVersion: apps/v1
@@ -30,45 +30,46 @@ spec:
         app: kailash-app
     spec:
       containers:
-      - name: app
-        image: my-kailash-app:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: kailash-secrets
-              key: openai-api-key
-        - name: DATABASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: kailash-config
-              key: database-url
-        - name: RUNTIME_TYPE
-          value: "async"
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: app
+          image: my-kailash-app:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kailash-secrets
+                  key: openai-api-key
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kailash-secrets
+                  key: database-url
+            - name: RUNTIME_TYPE
+              value: "async"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
 ```
 
 ### Service
+
 ```yaml
 # service.yaml
 apiVersion: v1
@@ -80,11 +81,12 @@ spec:
   selector:
     app: kailash-app
   ports:
-  - port: 80
-    targetPort: 8000
+    - port: 80
+      targetPort: 3000
 ```
 
 ### ConfigMap
+
 ```yaml
 # configmap.yaml
 apiVersion: v1
@@ -92,31 +94,22 @@ kind: ConfigMap
 metadata:
   name: kailash-config
 data:
-  database-url: postgresql://user@db:5432/mydb
+  environment: production
+  log-level: info
 ```
 
 ### Secret
 
-> **Production note**: Prefer creating secrets imperatively with `kubectl create secret generic`
-> instead of committing base64-encoded values in YAML manifests. For production, use a secrets
-> manager (Vault, AWS Secrets Manager, etc.).
-
-```bash
-# Preferred: create secret from literal values (never commit this command to git)
-kubectl create secret generic kailash-secrets \
-  --from-literal=openai-api-key="$OPENAI_API_KEY"
-```
-
 ```yaml
-# secret.yaml — alternative declarative approach (base64-encoded)
+# secret.yaml — EXAMPLE ONLY, use `kubectl create secret` or external secrets manager in production
 apiVersion: v1
 kind: Secret
 metadata:
   name: kailash-secrets
 type: Opaque
 data:
-  # echo -n "$OPENAI_API_KEY" | base64
   openai-api-key: <base64-encoded-key>
+  database-url: <base64-encoded-url>   # e.g. base64 of postgresql://user:pass@db:5432/mydb
 ```
 
 ## Deployment Commands
@@ -141,16 +134,19 @@ kubectl scale deployment kailash-app --replicas=5
 
 ## Kailash Framework Notes
 
-- **AsyncLocalRuntime required**: All Kailash containers must set `RUNTIME_TYPE=async` for proper async workflow execution in containerized environments.
-- **Nexus health endpoint**: If your app uses NexusApp, the built-in `/health` endpoint is automatically available for liveness/readiness probes — no custom health check code needed.
+- **Nexus** serves on port 3000 by default with a built-in `/health` endpoint
+- **DataFlow** requires `DATABASE_URL` — pass via Secret, not ConfigMap
+- **Kaizen** agents may need `OPENAI_API_KEY` or other LLM provider keys
+- **RUNTIME_TYPE=async** is recommended for all Kailash deployments (Rust async runtime)
+- Rust binary cold-starts in ~10ms — set low `initialDelaySeconds` on probes
 
 ## Best Practices
 
-1. **Health checks** - Liveness and readiness probes (use Nexus built-in `/health` if available)
-2. **Resource limits** - Set memory/CPU limits
-3. **Secrets** - Use `kubectl create secret generic --from-literal` or a secrets manager (never commit base64-encoded secrets to git)
-4. **ConfigMaps** - For configuration
-5. **Horizontal scaling** - Multiple replicas
+1. **Health checks** - Liveness and readiness probes (Nexus provides `/health`)
+2. **Resource limits** - Set memory/CPU limits (Rust binaries are lightweight: 128Mi-512Mi typical)
+3. **Secrets** - Use Kubernetes secrets or external secrets manager (Vault, AWS Secrets Manager) for credentials
+4. **ConfigMaps** - For non-sensitive configuration only
+5. **Horizontal scaling** - Multiple replicas with HPA
 6. **Rolling updates** - Zero-downtime deployments
 
 <!-- Trigger Keywords: kubernetes deployment, k8s kailash, kubernetes setup, k8s workflows -->

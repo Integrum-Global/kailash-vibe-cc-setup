@@ -17,6 +17,7 @@ Patterns for implementing loops, iterations, and cyclic workflows.
 ## Quick Reference
 
 Cyclic workflows enable:
+
 - **Loop until condition** - Repeat until success/threshold
 - **Batch processing** - Process items in chunks
 - **Retry logic** - Automatic retry with backoff
@@ -24,222 +25,247 @@ Cyclic workflows enable:
 
 ## Pattern 1: Loop Until Condition
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. Initialize counter
-workflow.add_node("SetVariableNode", "init_counter", {
-    "variable_name": "counter",
-    "value": 0
-})
+// 1. Initialize counter
+builder.add_node("SetVariableNode", "init_counter", ValueMap::from([
+    ("variable_name".into(), Value::String("counter".into())),
+    ("value".into(), Value::Integer(0)),
+]));
 
-# 2. Process iteration
-workflow.add_node("APICallNode", "check_status", {
-    "url": "https://api.example.com/status",
-    "method": "GET"
-})
+// 2. Process iteration
+builder.add_node("HTTPRequestNode", "check_status", ValueMap::from([
+    ("url".into(), Value::String("https://api.example.com/status".into())),
+    ("method".into(), Value::String("GET".into())),
+]));
 
-# 3. Evaluate condition
-workflow.add_node("ConditionalNode", "check_complete", {
-    "condition": "{{check_status.status}} == 'completed'",
-    "true_branch": "complete",
-    "false_branch": "increment"
-})
+// 3. Evaluate condition
+builder.add_node("ConditionalNode", "check_complete", ValueMap::from([
+    ("condition".into(), Value::String("{{check_status.status}} == 'completed'".into())),
+    ("true_branch".into(), Value::String("complete".into())),
+    ("false_branch".into(), Value::String("increment".into())),
+]));
 
-# 4. Increment counter
-workflow.add_node("TransformNode", "increment", {
-    "input": "{{init_counter.counter}}",
-    "transformation": "value + 1"
-})
+// 4. Increment counter
+builder.add_node("TransformNode", "increment", ValueMap::from([
+    ("input".into(), Value::String("{{init_counter.counter}}".into())),
+    ("transformation".into(), Value::String("value + 1".into())),
+]));
 
-# 5. Check max iterations
-workflow.add_node("ConditionalNode", "check_max", {
-    "condition": "{{increment.result}} < 10",
-    "true_branch": "wait",
-    "false_branch": "timeout"
-})
+// 5. Check max iterations
+builder.add_node("ConditionalNode", "check_max", ValueMap::from([
+    ("condition".into(), Value::String("{{increment.result}} < 10".into())),
+    ("true_branch".into(), Value::String("wait".into())),
+    ("false_branch".into(), Value::String("timeout".into())),
+]));
 
-# 6. Wait before retry
-workflow.add_node("DelayNode", "wait", {
-    "duration_seconds": 5
-})
+// 6. Wait before retry
+builder.add_node("DelayNode", "wait", ValueMap::from([
+    ("duration_seconds".into(), Value::Integer(5)),
+]));
 
-# 7. Loop back (connect to check_status)
-workflow.add_connection("init_counter", "counter", "check_status", "input")
-workflow.add_connection("check_status", "status", "check_complete", "condition")
-workflow.add_connection("check_complete", "output_false", "increment", "input")
-workflow.add_connection("increment", "result", "check_max", "condition")
-workflow.add_connection("check_max", "output_true", "wait", "trigger")
-workflow.add_connection("wait", "done", "check_status", "input")  # Loop!
+// 7. Loop back (connect to check_status)
+builder.connect("init_counter", "counter", "check_status", "input");
+builder.connect("check_status", "status", "check_complete", "condition");
+builder.connect("check_complete", "output_false", "increment", "input");
+builder.connect("increment", "result", "check_max", "condition");
+builder.connect("check_max", "output_true", "wait", "trigger");
+builder.connect("wait", "done", "check_status", "input"); // Loop!
 
-with LocalRuntime() as runtime:
-    results, run_id = runtime.execute(workflow.build())
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::new()).await?;
 ```
 
 ## Pattern 2: Batch Processing
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Load all items
-workflow.add_node("DatabaseQueryNode", "load_items", {
-    "query": "SELECT id, data FROM items WHERE processed = FALSE",
-    "batch_size": 100
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Split into batches
-workflow.add_node("BatchSplitNode", "split_batches", {
-    "input": "{{load_items.results}}",
-    "batch_size": 10
-})
+// 1. Load all items
+builder.add_node("DatabaseQueryNode", "load_items", ValueMap::from([
+    ("query".into(), Value::String("SELECT id, data FROM items WHERE processed = FALSE".into())),
+    ("batch_size".into(), Value::Integer(100)),
+]));
 
-# 3. Process each batch
-workflow.add_node("MapNode", "process_batch", {
-    "input": "{{split_batches.batches}}",
-    "operation": "process_item"
-})
+// 2. Split into batches
+builder.add_node("BatchSplitNode", "split_batches", ValueMap::from([
+    ("input".into(), Value::String("{{load_items.results}}".into())),
+    ("batch_size".into(), Value::Integer(10)),
+]));
 
-# 4. Update database
-workflow.add_node("DatabaseExecuteNode", "mark_processed", {
-    "query": "UPDATE items SET processed = TRUE WHERE id IN ({{process_batch.ids}})"
-})
+// 3. Process each batch
+builder.add_node("MapNode", "process_batch", ValueMap::from([
+    ("input".into(), Value::String("{{split_batches.batches}}".into())),
+    ("operation".into(), Value::String("process_item".into())),
+]));
 
-# 5. Check for more items
-workflow.add_node("ConditionalNode", "check_more", {
-    "condition": "{{load_items.has_more}} == true",
-    "true_branch": "load_items",  # Loop back!
-    "false_branch": "complete"
-})
+// 4. Update database
+builder.add_node("DatabaseExecuteNode", "mark_processed", ValueMap::from([
+    ("query".into(), Value::String(
+        "UPDATE items SET processed = TRUE WHERE id IN ({{process_batch.ids}})".into()
+    )),
+]));
 
-workflow.add_connection("load_items", "results", "split_batches", "input")
-workflow.add_connection("split_batches", "batches", "process_batch", "input")
-workflow.add_connection("process_batch", "ids", "mark_processed", "ids")
-workflow.add_connection("mark_processed", "result", "check_more", "condition")
-workflow.add_connection("check_more", "output_true", "load_items", "trigger")
+// 5. Check for more items
+builder.add_node("ConditionalNode", "check_more", ValueMap::from([
+    ("condition".into(), Value::String("{{load_items.has_more}} == true".into())),
+    ("true_branch".into(), Value::String("load_items".into())), // Loop back!
+    ("false_branch".into(), Value::String("complete".into())),
+]));
+
+builder.connect("load_items", "results", "split_batches", "input");
+builder.connect("split_batches", "batches", "process_batch", "input");
+builder.connect("process_batch", "ids", "mark_processed", "ids");
+builder.connect("mark_processed", "result", "check_more", "condition");
+builder.connect("check_more", "output_true", "load_items", "trigger");
 ```
 
 ## Pattern 3: Exponential Backoff Retry
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Initialize retry state
-workflow.add_node("SetVariableNode", "init_retry", {
-    "retry_count": 0,
-    "backoff_seconds": 1
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Execute operation
-workflow.add_node("APICallNode", "api_call", {
-    "url": "https://api.example.com/operation",
-    "method": "POST",
-    "timeout": 30
-})
+// 1. Initialize retry state
+builder.add_node("SetVariableNode", "init_retry", ValueMap::from([
+    ("retry_count".into(), Value::Integer(0)),
+    ("backoff_seconds".into(), Value::Integer(1)),
+]));
 
-# 3. Check success
-workflow.add_node("ConditionalNode", "check_success", {
-    "condition": "{{api_call.status_code}} == 200",
-    "true_branch": "success",
-    "false_branch": "check_retry"
-})
+// 2. Execute operation
+builder.add_node("HTTPRequestNode", "api_call", ValueMap::from([
+    ("url".into(), Value::String("https://api.example.com/operation".into())),
+    ("method".into(), Value::String("POST".into())),
+    ("timeout".into(), Value::Integer(30)),
+]));
 
-# 4. Check retry count
-workflow.add_node("ConditionalNode", "check_retry", {
-    "condition": "{{init_retry.retry_count}} < 5",
-    "true_branch": "calculate_backoff",
-    "false_branch": "failed"
-})
+// 3. Check success
+builder.add_node("ConditionalNode", "check_success", ValueMap::from([
+    ("condition".into(), Value::String("{{api_call.status_code}} == 200".into())),
+    ("true_branch".into(), Value::String("success".into())),
+    ("false_branch".into(), Value::String("check_retry".into())),
+]));
 
-# 5. Calculate exponential backoff
-workflow.add_node("TransformNode", "calculate_backoff", {
-    "input": "{{init_retry.backoff_seconds}}",
-    "transformation": "value * 2"  # Exponential: 1, 2, 4, 8, 16 seconds
-})
+// 4. Check retry count
+builder.add_node("ConditionalNode", "check_retry", ValueMap::from([
+    ("condition".into(), Value::String("{{init_retry.retry_count}} < 5".into())),
+    ("true_branch".into(), Value::String("calculate_backoff".into())),
+    ("false_branch".into(), Value::String("failed".into())),
+]));
 
-# 6. Wait with backoff
-workflow.add_node("DelayNode", "backoff_wait", {
-    "duration_seconds": "{{calculate_backoff.result}}"
-})
+// 5. Calculate exponential backoff
+builder.add_node("TransformNode", "calculate_backoff", ValueMap::from([
+    ("input".into(), Value::String("{{init_retry.backoff_seconds}}".into())),
+    ("transformation".into(), Value::String("value * 2".into())), // Exponential: 1, 2, 4, 8, 16 seconds
+]));
 
-# 7. Increment retry counter
-workflow.add_node("TransformNode", "increment_retry", {
-    "input": "{{init_retry.retry_count}}",
-    "transformation": "value + 1"
-})
+// 6. Wait with backoff
+builder.add_node("DelayNode", "backoff_wait", ValueMap::from([
+    ("duration_seconds".into(), Value::String("{{calculate_backoff.result}}".into())),
+]));
 
-# 8. Loop back to retry
-workflow.add_connection("init_retry", "retry_count", "api_call", "retry")
-workflow.add_connection("api_call", "status_code", "check_success", "condition")
-workflow.add_connection("check_success", "output_false", "check_retry", "condition")
-workflow.add_connection("check_retry", "output_true", "calculate_backoff", "input")
-workflow.add_connection("calculate_backoff", "result", "backoff_wait", "duration_seconds")
-workflow.add_connection("backoff_wait", "done", "increment_retry", "input")
-workflow.add_connection("increment_retry", "result", "api_call", "retry")  # Loop!
+// 7. Increment retry counter
+builder.add_node("TransformNode", "increment_retry", ValueMap::from([
+    ("input".into(), Value::String("{{init_retry.retry_count}}".into())),
+    ("transformation".into(), Value::String("value + 1".into())),
+]));
+
+// 8. Loop back to retry
+builder.connect("init_retry", "retry_count", "api_call", "retry");
+builder.connect("api_call", "status_code", "check_success", "condition");
+builder.connect("check_success", "output_false", "check_retry", "condition");
+builder.connect("check_retry", "output_true", "calculate_backoff", "input");
+builder.connect("calculate_backoff", "result", "backoff_wait", "duration_seconds");
+builder.connect("backoff_wait", "done", "increment_retry", "input");
+builder.connect("increment_retry", "result", "api_call", "retry"); // Loop!
 ```
 
 ## Pattern 4: Iterative Refinement
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. Initial prompt
-workflow.add_node("SetVariableNode", "init_prompt", {
-    "prompt": "Write a product description for: {{product_name}}",
-    "iteration": 0
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. Generate content (LLM)
-workflow.add_node("LLMNode", "generate", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": "{{init_prompt.prompt}}"
-})
+let llm_model = std::env::var("LLM_MODEL").expect("LLM_MODEL in .env");
+let llm_provider = std::env::var("LLM_PROVIDER").expect("LLM_PROVIDER in .env");
 
-# 3. Evaluate quality
-workflow.add_node("LLMNode", "evaluate", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": "Rate this description 1-10: {{generate.response}}"
-})
+// 1. Initial prompt
+builder.add_node("SetVariableNode", "init_prompt", ValueMap::from([
+    ("prompt".into(), Value::String("Write a product description for: {{product_name}}".into())),
+    ("iteration".into(), Value::Integer(0)),
+]));
 
-# 4. Check quality threshold
-workflow.add_node("ConditionalNode", "check_quality", {
-    "condition": "{{evaluate.score}} >= 8",
-    "true_branch": "approved",
-    "false_branch": "refine"
-})
+// 2. Generate content (LLM)
+builder.add_node("LLMNode", "generate", ValueMap::from([
+    ("provider".into(), Value::String(llm_provider.clone().into())),
+    ("model".into(), Value::String(llm_model.clone().into())),
+    ("prompt".into(), Value::String("{{init_prompt.prompt}}".into())),
+]));
 
-# 5. Refine prompt with feedback
-workflow.add_node("LLMNode", "refine", {
-    "provider": "openai",
-    "model": "gpt-4",
-    "prompt": "Improve this: {{generate.response}}. Feedback: {{evaluate.feedback}}"
-})
+// 3. Evaluate quality
+builder.add_node("LLMNode", "evaluate", ValueMap::from([
+    ("provider".into(), Value::String(llm_provider.clone().into())),
+    ("model".into(), Value::String(llm_model.clone().into())),
+    ("prompt".into(), Value::String("Rate this description 1-10: {{generate.response}}".into())),
+]));
 
-# 6. Check max iterations
-workflow.add_node("ConditionalNode", "check_max", {
-    "condition": "{{init_prompt.iteration}} < 3",
-    "true_branch": "increment",
-    "false_branch": "use_best"
-})
+// 4. Check quality threshold
+builder.add_node("ConditionalNode", "check_quality", ValueMap::from([
+    ("condition".into(), Value::String("{{evaluate.score}} >= 8".into())),
+    ("true_branch".into(), Value::String("approved".into())),
+    ("false_branch".into(), Value::String("refine".into())),
+]));
 
-# 7. Increment iteration
-workflow.add_node("TransformNode", "increment", {
-    "input": "{{init_prompt.iteration}}",
-    "transformation": "value + 1"
-})
+// 5. Refine prompt with feedback
+builder.add_node("LLMNode", "refine", ValueMap::from([
+    ("provider".into(), Value::String(llm_provider.into())),
+    ("model".into(), Value::String(llm_model.into())),
+    ("prompt".into(), Value::String(
+        "Improve this: {{generate.response}}. Feedback: {{evaluate.feedback}}".into()
+    )),
+]));
 
-# Loop back for refinement
-workflow.add_connection("init_prompt", "prompt", "generate", "prompt")
-workflow.add_connection("generate", "response", "evaluate", "prompt")
-workflow.add_connection("evaluate", "score", "check_quality", "condition")
-workflow.add_connection("check_quality", "output_false", "refine", "input")
-workflow.add_connection("refine", "response", "check_max", "condition")
-workflow.add_connection("check_max", "output_true", "increment", "input")
-workflow.add_connection("increment", "result", "generate", "iteration")  # Loop!
+// 6. Check max iterations
+builder.add_node("ConditionalNode", "check_max", ValueMap::from([
+    ("condition".into(), Value::String("{{init_prompt.iteration}} < 3".into())),
+    ("true_branch".into(), Value::String("increment".into())),
+    ("false_branch".into(), Value::String("use_best".into())),
+]));
+
+// 7. Increment iteration
+builder.add_node("TransformNode", "increment", ValueMap::from([
+    ("input".into(), Value::String("{{init_prompt.iteration}}".into())),
+    ("transformation".into(), Value::String("value + 1".into())),
+]));
+
+// Loop back for refinement
+builder.connect("init_prompt", "prompt", "generate", "prompt");
+builder.connect("generate", "response", "evaluate", "prompt");
+builder.connect("evaluate", "score", "check_quality", "condition");
+builder.connect("check_quality", "output_false", "refine", "input");
+builder.connect("refine", "response", "check_max", "condition");
+builder.connect("check_max", "output_true", "increment", "input");
+builder.connect("increment", "result", "generate", "iteration"); // Loop!
 ```
 
 ## Best Practices
@@ -264,8 +290,5 @@ workflow.add_connection("increment", "result", "generate", "iteration")  # Loop!
 - **ETL Patterns**: [`workflow-pattern-etl`](workflow-pattern-etl.md)
 - **Error Handling**: [`gold-error-handling`](../../17-gold-standards/gold-error-handling.md)
 - **Conditional Logic**: [`nodes-logic-reference`](../nodes/nodes-logic-reference.md)
-
-## Documentation
-
 
 <!-- Trigger Keywords: loop workflow, cyclic, iterate, repeat until, workflow cycles, retry logic, batch processing -->

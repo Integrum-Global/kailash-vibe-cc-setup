@@ -12,52 +12,57 @@ description: "Business rule engine patterns. Use when asking 'business rules', '
 
 ## Pattern: Discount Calculation Rules
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. Load customer data
-workflow.add_node("DatabaseQueryNode", "load_customer", {
-    "query": "SELECT * FROM customers WHERE id = ?",
-    "parameters": ["{{input.customer_id}}"]
-})
+// 1. Load customer data
+builder.add_node("DatabaseQueryNode", "load_customer", ValueMap::from([
+    ("query".into(), Value::String("SELECT * FROM customers WHERE id = ?".into())),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{input.customer_id}}".into()),
+    ])),
+]));
 
-# 2. Check membership tier
-workflow.add_node("ConditionalNode", "check_tier", {
-    "condition": "{{load_customer.tier}}",
-    "branches": {
-        "gold": "gold_discount",
-        "silver": "silver_discount",
-        "bronze": "bronze_discount"
-    }
-})
+// 2. Check membership tier
+builder.add_node("ConditionalNode", "check_tier", ValueMap::from([
+    ("condition".into(), Value::String("{{load_customer.tier}}".into())),
+    ("branches".into(), Value::Object(ValueMap::from([
+        ("gold".into(), Value::String("gold_discount".into())),
+        ("silver".into(), Value::String("silver_discount".into())),
+        ("bronze".into(), Value::String("bronze_discount".into())),
+    ]))),
+]));
 
-# 3. Calculate discounts
-workflow.add_node("TransformNode", "gold_discount", {
-    "input": "{{input.amount}}",
-    "transformation": "value * 0.80"  # 20% off
-})
+// 3. Calculate discounts
+builder.add_node("TransformNode", "gold_discount", ValueMap::from([
+    ("input".into(), Value::String("{{input.amount}}".into())),
+    ("transformation".into(), Value::String("value * 0.80".into())), // 20% off
+]));
 
-workflow.add_node("TransformNode", "silver_discount", {
-    "input": "{{input.amount}}",
-    "transformation": "value * 0.90"  # 10% off
-})
+builder.add_node("TransformNode", "silver_discount", ValueMap::from([
+    ("input".into(), Value::String("{{input.amount}}".into())),
+    ("transformation".into(), Value::String("value * 0.90".into())), // 10% off
+]));
 
-workflow.add_node("TransformNode", "bronze_discount", {
-    "input": "{{input.amount}}",
-    "transformation": "value * 0.95"  # 5% off
-})
+builder.add_node("TransformNode", "bronze_discount", ValueMap::from([
+    ("input".into(), Value::String("{{input.amount}}".into())),
+    ("transformation".into(), Value::String("value * 0.95".into())), // 5% off
+]));
 
-# 4. Apply additional rules
-workflow.add_node("ConditionalNode", "check_bulk", {
-    "condition": "{{input.quantity}} > 10",
-    "true_branch": "bulk_discount",
-    "false_branch": "final_price"
-})
+// 4. Apply additional rules
+builder.add_node("ConditionalNode", "check_bulk", ValueMap::from([
+    ("condition".into(), Value::String("{{input.quantity}} > 10".into())),
+    ("true_branch".into(), Value::String("bulk_discount".into())),
+    ("false_branch".into(), Value::String("final_price".into())),
+]));
 
-workflow.add_connection("load_customer", "tier", "check_tier", "condition")
-workflow.add_connection("check_tier", "result", "check_bulk", "input")
+builder.connect("load_customer", "tier", "check_tier", "condition");
+builder.connect("check_tier", "result", "check_bulk", "input");
 ```
 
 <!-- Trigger Keywords: business rules, rule engine, conditional logic, decision workflow -->

@@ -12,211 +12,284 @@ description: "Test implementation patterns for the 3-tier testing strategy inclu
 
 ## Tier 1: Unit Test Pattern
 
-```python
-import pytest
-from kailash.nodes.custom_analysis_node import CustomAnalysisNode
+```rust
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-def test_analysis_node_basic_functionality():
-    """Test basic node functionality in isolation."""
-    node = CustomAnalysisNode()
+#[test]
+fn test_analysis_node_basic_functionality() {
+    let node = CustomAnalysisNode::from_config(&ValueMap::new());
 
-    result = node.execute(
-        input_data={"values": [1, 2, 3, 4, 5]},
-        analysis_type="mean"
-    )
+    let inputs = ValueMap::from([
+        ("input_data".into(), Value::Array(vec![
+            Value::Integer(1), Value::Integer(2), Value::Integer(3),
+            Value::Integer(4), Value::Integer(5),
+        ])),
+        ("analysis_type".into(), Value::String("mean".into())),
+    ]);
 
-    assert result["result"] == 3.0
-    assert result["status"] == "success"
+    let result = tokio_test::block_on(node.execute(inputs, &ExecutionContext::default()));
+    let outputs = result.expect("execution should succeed");
 
-def test_analysis_node_error_handling():
-    """Test error handling in isolation."""
-    node = CustomAnalysisNode()
+    assert_eq!(outputs["result"], Value::Float(3.0));
+    assert_eq!(outputs["status"], Value::String("success".into()));
+}
 
-    result = node.execute(input_data={}, analysis_type="mean")
+#[test]
+fn test_analysis_node_error_handling() {
+    let node = CustomAnalysisNode::from_config(&ValueMap::new());
 
-    assert result["error"] == "No data provided"
-    assert result["status"] == "error"
+    let inputs = ValueMap::from([
+        ("input_data".into(), Value::Object(ValueMap::new())),
+        ("analysis_type".into(), Value::String("mean".into())),
+    ]);
+
+    let result = tokio_test::block_on(node.execute(inputs, &ExecutionContext::default()));
+    assert!(result.is_err(), "empty data should produce an error");
+}
 ```
 
 ## Tier 2: Integration Test Pattern
 
-```python
-import pytest
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime.local import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-@pytest.mark.integration
-def test_workflow_database_integration():
-    """Test workflow with real database operations."""
-    # Uses real PostgreSQL from Docker
-    workflow = WorkflowBuilder()
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_workflow_database_integration() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
 
-    workflow.add_node("UserCreateNode", "create_user", {
-        "name": "Integration Test User",
-        "email": "integration@test.com"
-    })
+    let mut builder = WorkflowBuilder::new();
 
-    workflow.add_node("UserQueryNode", "find_user", {
-        "filter": {"email": "integration@test.com"}
-    })
+    builder.add_node("SQLQueryNode", "create_user", ValueMap::from([
+        ("connection_string".into(), Value::String(db_url.clone().into())),
+        ("query".into(), Value::String(
+            "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id".into()
+        )),
+        ("parameters".into(), Value::Array(vec![
+            Value::String("Integration Test User".into()),
+            Value::String("integration@test.com".into()),
+        ])),
+    ]));
 
-    workflow.add_connection("create_user", "user", "find_user", "criteria")
+    builder.add_node("SQLQueryNode", "find_user", ValueMap::from([
+        ("connection_string".into(), Value::String(db_url.into())),
+        ("query".into(), Value::String(
+            "SELECT * FROM users WHERE email = $1".into()
+        )),
+        ("parameters".into(), Value::Array(vec![
+            Value::String("integration@test.com".into()),
+        ])),
+    ]));
 
-    # Use context manager for proper resource cleanup (required since v0.12.0)
-    with LocalRuntime() as runtime:
-        results, run_id = runtime.execute(workflow.build())
+    builder.connect("create_user", "result", "find_user", "criteria");
 
-    assert results["create_user"]["id"] is not None
-    assert results["find_user"]["found"] is True
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("workflow build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
+
+    assert!(result.results.contains_key("create_user"));
+    assert!(result.results.contains_key("find_user"));
+}
 ```
 
 ## Tier 3: E2E Test Pattern
 
-```python
-import pytest
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime.local import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-@pytest.mark.e2e
-def test_complete_data_processing_pipeline():
-    """Test complete user workflow from ingestion to output."""
-    workflow = WorkflowBuilder()
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_complete_data_processing_pipeline() {
+    let mut builder = WorkflowBuilder::new();
 
-    # Data pipeline
-    workflow.add_node("CSVReaderNode", "ingest", {"file_path": "tests/fixtures/real_data.csv"})
-    workflow.add_node("DataValidatorNode", "validate", {"schema": {"name": "str", "age": "int"}})
-    workflow.add_node("DataTransformerNode", "transform", {"operations": ["clean_names"]})
-    workflow.add_node("UserBatchCreateNode", "store", {"batch_size": 100})
+    // Data pipeline
+    builder.add_node("CSVReaderNode", "ingest", ValueMap::from([
+        ("file_path".into(), Value::String("tests/fixtures/real_data.csv".into())),
+    ]));
+    builder.add_node("SchemaValidatorNode", "validate", ValueMap::from([
+        ("schema".into(), Value::Object(ValueMap::from([
+            ("name".into(), Value::String("str".into())),
+            ("age".into(), Value::String("int".into())),
+        ]))),
+    ]));
+    builder.add_node("DataMapperNode", "transform", ValueMap::from([
+        ("operations".into(), Value::Array(vec![
+            Value::String("clean_names".into()),
+        ])),
+    ]));
 
-    # Connect pipeline
-    workflow.add_connection("ingest", "data", "validate", "input_data")
-    workflow.add_connection("validate", "validated", "transform", "raw_data")
-    workflow.add_connection("transform", "transformed", "store", "user_data")
+    // Connect pipeline
+    builder.connect("ingest", "data", "validate", "input_data");
+    builder.connect("validate", "validated", "transform", "raw_data");
 
-    # Use context manager for proper resource cleanup (required since v0.12.0)
-    with LocalRuntime() as runtime:
-        results, run_id = runtime.execute(workflow.build())
+    let registry = Arc::new(NodeRegistry::default());
+    let workflow = builder.build(&registry).expect("workflow build failed");
+    let runtime = Runtime::new(RuntimeConfig::default(), registry);
+    let result = runtime.execute(&workflow, ValueMap::new()).await.expect("execution failed");
 
-    assert results["ingest"]["rows_read"] > 0
-    assert results["store"]["users_created"] > 0
+    assert!(result.results["ingest"].contains_key("data"));
+}
 ```
 
-## Fixture Patterns
+## Helper Functions (Replacing Fixtures)
 
-```python
-@pytest.fixture
-def sample_user_data():
-    return {
-        "name": "Test User",
-        "email": "test@example.com",
-        "age": 30,
-        "preferences": {"theme": "dark"}
-    }
+```rust
+/// Create sample user data for tests.
+fn sample_user_data() -> ValueMap {
+    ValueMap::from([
+        ("name".into(), Value::String("Test User".into())),
+        ("email".into(), Value::String("test@example.com".into())),
+        ("age".into(), Value::Integer(30)),
+        ("preferences".into(), Value::Object(ValueMap::from([
+            ("theme".into(), Value::String("dark".into())),
+        ]))),
+    ])
+}
 
-@pytest.fixture
-def real_csv_data():
-    """Real CSV data for E2E tests."""
-    return "tests/fixtures/users.csv"  # Actual file, not mocked
+/// Path to real CSV fixture data for E2E tests.
+fn real_csv_data() -> &'static str {
+    "tests/fixtures/users.csv" // Actual file, not mocked
+}
 
-@pytest.fixture(autouse=True)
-def cleanup_test_database():
-    """Clean database before each test."""
-    db = get_test_database()
-    db.execute("TRUNCATE TABLE users CASCADE")
-    yield
-    db.execute("TRUNCATE TABLE users CASCADE")
+/// Set up and tear down test database tables.
+#[cfg(feature = "integration")]
+async fn with_clean_database<F, Fut>(test_fn: F)
+where
+    F: FnOnce(sqlx::PgPool) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    let pool = sqlx::PgPool::connect(&db_url).await.expect("connect failed");
+    sqlx::query("TRUNCATE TABLE users CASCADE").execute(&pool).await.ok();
+    test_fn(pool.clone()).await;
+    sqlx::query("TRUNCATE TABLE users CASCADE").execute(&pool).await.ok();
+}
 ```
 
 ## Timeout Enforcement
 
-```python
-# Unit tests (Tier 1) - 1 second max
-@pytest.mark.timeout(1)
-def test_fast_unit_operation():
-    pass
+```rust
+// Unit tests (Tier 1) - use tokio timeout
+#[tokio::test]
+async fn test_fast_unit_operation() {
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(1),
+        async { /* unit test logic */ }
+    ).await;
+    assert!(result.is_ok(), "unit test exceeded 1s timeout");
+}
 
-# Integration tests (Tier 2) - 5 seconds max
-@pytest.mark.timeout(5)
-def test_database_integration():
-    pass
+// Integration tests (Tier 2) - 5 seconds max
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_database_integration_with_timeout() {
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        async { /* integration test logic */ }
+    ).await;
+    assert!(result.is_ok(), "integration test exceeded 5s timeout");
+}
 
-# E2E tests (Tier 3) - 10 seconds max
-@pytest.mark.timeout(10)
-def test_complete_workflow():
-    pass
+// E2E tests (Tier 3) - 10 seconds max
+#[tokio::test]
+#[cfg(feature = "e2e")]
+async fn test_complete_workflow_with_timeout() {
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        async { /* e2e test logic */ }
+    ).await;
+    assert!(result.is_ok(), "e2e test exceeded 10s timeout");
+}
 ```
 
 ## Allowed vs Forbidden Patterns
 
 ### Allowed in All Tiers
 
-```python
-# Time-based testing
-with freeze_time("2023-01-01"):
-    result = time_sensitive_function()
+```rust
+// Time-based testing (use a fixed timestamp)
+let fixed_time = chrono::NaiveDate::from_ymd_opt(2023, 1, 1)
+    .unwrap()
+    .and_hms_opt(0, 0, 0)
+    .unwrap();
 
-# Random seed control
-random.seed(42)
-result = random_based_function()
+// Deterministic random with seed
+use rand::SeedableRng;
+let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
-# Environment variable testing
-with patch.dict(os.environ, {"TEST_MODE": "true"}):
-    result = environment_aware_function()
+// Environment variable testing
+std::env::set_var("TEST_MODE", "true");
+let result = environment_aware_function();
+std::env::remove_var("TEST_MODE");
 ```
 
 ### Allowed in Tier 1 Only
 
-```python
-@patch('external_api_client.request')
-def test_unit_with_mock(mock_request):
-    mock_request.return_value = {"status": "success"}
-    result = my_function()
-    assert result["processed"] is True
+```rust
+// Trait-based test doubles are acceptable in unit tests
+struct FakeHttpClient;
+impl HttpClient for FakeHttpClient {
+    fn get(&self, _url: &str) -> Result<Response, Error> {
+        Ok(Response { status: 200, body: r#"{"status":"success"}"#.into() })
+    }
+}
+
+#[test]
+fn test_unit_with_fake_client() {
+    let client = FakeHttpClient;
+    let result = my_function(&client);
+    assert!(result.is_ok());
+}
 ```
 
 ### Forbidden in Tiers 2-3
 
-```python
-# ❌ Don't mock databases
-@patch('database.connect')
-def test_database_integration(mock_db):  # WRONG
-    pass
+```rust
+// ❌ Don't use fake database implementations
+// struct FakeDatabase; // WRONG in integration tests
 
-# ❌ Don't mock SDK components
-@patch('kailash.nodes.csv_reader_node.CSVReaderNode')
-def test_workflow_integration(mock_node):  # WRONG
-    pass
+// ❌ Don't use mockall for SDK components
+// #[automock] trait NodeExecutor { ... } // WRONG in integration tests
 
-# ❌ Don't mock file operations
-@patch('builtins.open')
-def test_file_processing(mock_open):  # WRONG
-    pass
+// ❌ Don't use fake file system implementations
+// struct InMemoryFs; // WRONG in integration tests - use real temp files
 ```
 
 ## Test Execution Commands
 
 ```bash
 # Unit tests only (fast feedback)
-pytest tests/unit/ --timeout=1 --tb=short
+cargo test --workspace
 
-# Integration tests (requires Docker)
-pytest tests/integration/ --timeout=5 -v
+# Integration tests (requires Docker services)
+docker compose -f tests/docker-compose.test.yml up -d
+cargo test --workspace --features integration
 
 # E2E tests
-pytest tests/e2e/ --timeout=10 -v
+cargo test --workspace --features e2e
 
 # Full test suite
-pytest tests/ --timeout=10 --tb=short
+cargo test --workspace --features integration,e2e
 
-# With coverage
-pytest tests/unit/ --cov=src/kailash --cov-report=term-missing
+# With coverage (requires cargo-tarpaulin or cargo-llvm-cov)
+cargo tarpaulin --workspace --out Html
+# or
+cargo llvm-cov --workspace --html
 ```
 
 ## Docker Infrastructure
 
 ```bash
 # Start test services
-cd tests/utils && ./test-env up && ./test-env status
+docker compose -f tests/docker-compose.test.yml up -d
 
 # Expected services:
 # ✅ PostgreSQL: localhost:5433
@@ -225,11 +298,12 @@ cd tests/utils && ./test-env up && ./test-env status
 # ✅ Elasticsearch: localhost:9201
 ```
 
-```python
-# Test configuration
-TEST_DATABASE_URL = "postgresql://test:test@localhost:5433/test_db"
-TEST_REDIS_URL = "redis://localhost:6380/0"
-TEST_MINIO_URL = "http://localhost:9001"
+```rust
+// Test configuration via environment variables
+// Set in .env or export before running integration tests:
+// DATABASE_URL=postgresql://test:test@localhost:5433/test_db
+// REDIS_URL=redis://localhost:6380/0
+// MINIO_URL=http://localhost:9001
 ```
 
-<!-- Trigger Keywords: test patterns, unit test example, integration test example, E2E test example, pytest patterns, testing fixtures, test timeout, NO MOCKING -->
+<!-- Trigger Keywords: test patterns, unit test example, integration test example, E2E test example, cargo test patterns, testing helpers, test timeout, NO MOCKING -->

@@ -22,7 +22,7 @@ def test_workflow_creation():
     })
 
     runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build(), parameters={
+    results, run_id = runtime.execute(workflow.build(), inputs={
         "process": {"input_value": 10}
     })
 

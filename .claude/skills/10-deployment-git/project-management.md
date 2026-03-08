@@ -1,3 +1,8 @@
+---
+name: project-management
+description: "Dual-tracking project management with GitHub Projects and local todos. Use when asking 'project management', 'todo tracking', 'GitHub projects', or 'task management'."
+---
+
 # Project Management Guide: GitHub & Local Todo Synchronization
 
 ## Overview
@@ -35,11 +40,13 @@ This project uses a **dual-tracking system** that keeps GitHub Projects (for sta
 ## Two Systems, One Source of Truth
 
 ### GitHub Issues (Project-Level Tracking)
+
 **Purpose**: Stakeholder visibility, project management, requirements tracking
 
 **Managed by**: `gh-manager` subagent
 
 **Contains**:
+
 - User stories with acceptance criteria
 - Story point estimates
 - Epic/story/task hierarchy
@@ -47,17 +54,20 @@ This project uses a **dual-tracking system** that keeps GitHub Projects (for sta
 - Stakeholder comments and decisions
 
 **Source of Truth For**:
+
 - Requirements and acceptance criteria
 - Business priorities and story points
 - Project-level dependencies
 - Release planning
 
 ### Local Todos (Implementation Tracking)
+
 **Purpose**: Developer task breakdown, implementation progress, technical details
 
 **Managed by**: `todo-manager` subagent
 
 **Contains**:
+
 - Detailed implementation subtasks (1-2 hour chunks)
 - Technical approach and architecture notes
 - Test requirements and verification steps
@@ -65,6 +75,7 @@ This project uses a **dual-tracking system** that keeps GitHub Projects (for sta
 - Code-level dependencies
 
 **Source of Truth For**:
+
 - Implementation status and progress
 - Technical approach and decisions
 - Actual time spent vs estimated
@@ -84,21 +95,25 @@ Requirements    Implementation
 ### Sync Trigger Points
 
 1. **Issue Created (GH → Local)**
+
    ```
    gh-manager creates issue → todo-manager creates TODO-{issue#}-feature.md
    ```
 
 2. **Implementation Started (Local → GH)**
+
    ```
    todo-manager status: IN_PROGRESS → gh-manager comments: "🔄 Implementation started"
    ```
 
 3. **Progress Update (Local → GH)**
+
    ```
    todo-manager 50% complete → gh-manager comments: "📊 Progress: 50% complete"
    ```
 
 4. **Blocker Encountered (Local → GH)**
+
    ```
    todo-manager status: BLOCKED → gh-manager adds "blocked" label + comment
    ```
@@ -112,16 +127,17 @@ Requirements    Implementation
 
 When GitHub and local todos diverge:
 
-| Conflict Type | Resolution | Priority |
-|--------------|------------|----------|
-| **Requirements changed in GH** | Update local todo acceptance criteria | GitHub wins |
-| **Acceptance criteria updated** | Sync to local todo | GitHub wins |
-| **Implementation status differs** | Update GitHub from local | Local wins |
-| **Technical approach changed** | Keep in local, notify in GH comment | Local wins |
-| **Story points adjusted** | Update local estimate | GitHub wins |
-| **Blocker added locally** | Sync to GitHub immediately | Local wins |
+| Conflict Type                     | Resolution                            | Priority    |
+| --------------------------------- | ------------------------------------- | ----------- |
+| **Requirements changed in GH**    | Update local todo acceptance criteria | GitHub wins |
+| **Acceptance criteria updated**   | Sync to local todo                    | GitHub wins |
+| **Implementation status differs** | Update GitHub from local              | Local wins  |
+| **Technical approach changed**    | Keep in local, notify in GH comment   | Local wins  |
+| **Story points adjusted**         | Update local estimate                 | GitHub wins |
+| **Blocker added locally**         | Sync to GitHub immediately            | Local wins  |
 
 **Resolution Process**:
+
 1. Detect conflict (automated or manual)
 2. Determine conflict type (requirements vs status)
 3. Apply priority rule (GitHub or Local wins)
@@ -307,6 +323,7 @@ pytest tests/  # Ensure all tests pass
 ### ❌ Don't Do This
 
 1. **Divergent Systems**
+
    ```
    ❌ Update local todo but forget to sync to GitHub
    ❌ Close GitHub issue but leave local todo active
@@ -314,6 +331,7 @@ pytest tests/  # Ensure all tests pass
    ```
 
 2. **Poor Linking**
+
    ```
    ❌ Create TODO-001.md without GitHub issue reference
    ❌ Use generic names: TODO-feature.md instead of TODO-101-feature.md
@@ -330,6 +348,7 @@ pytest tests/  # Ensure all tests pass
 ### ✅ Do This Instead
 
 1. **Synchronized Updates**
+
    ```
    ✅ Update local todo → immediately sync to GitHub
    ✅ See GH requirement change → update local todo acceptance criteria
@@ -337,6 +356,7 @@ pytest tests/  # Ensure all tests pass
    ```
 
 2. **Proper Linking**
+
    ```
    ✅ Create TODO-101-feature.md with GitHub issue #101 at top
    ✅ Include issue URL in todo for easy navigation
@@ -400,18 +420,21 @@ git-release-specialist → gh-manager (close issues) → todo-manager (archive)
 Use this checklist to verify proper sync:
 
 ### Daily Verification
+
 - [ ] All active local todos have GitHub issue references
 - [ ] GitHub issues match local todo status (in-progress, blocked, etc.)
 - [ ] No todos in `active/` with closed GitHub issues
 - [ ] No closed GitHub issues with active local todos
 
 ### Sprint Boundaries
+
 - [ ] All sprint issues have corresponding local todos
 - [ ] All active todos link to sprint issues
 - [ ] Completed todos archived, GitHub issues closed
 - [ ] Project board reflects actual completion status
 
 ### Release Time
+
 - [ ] All completed work has closed GitHub issues
 - [ ] All closed issues have merged PRs
 - [ ] All PRs reference their GitHub issues
@@ -424,6 +447,7 @@ Use this checklist to verify proper sync:
 **Symptoms**: Local todo shows "COMPLETED" but GitHub issue still open
 
 **Diagnosis**:
+
 ```bash
 # Check todo file
 cat todos/active/TODO-101-feature.md | grep "Status:"
@@ -433,6 +457,7 @@ gh issue view 101 --json state
 ```
 
 **Resolution**:
+
 ```bash
 # Sync local completion to GitHub
 > Use gh-manager to close issue #101 with completion details
@@ -446,6 +471,7 @@ gh issue view 101 --json state
 **Symptoms**: Found TODO-101-feature.md and TODO-feature.md both referencing #101
 
 **Resolution**:
+
 ```bash
 # Identify the correct todo (one with full GitHub reference)
 # Archive the duplicate
@@ -460,6 +486,7 @@ echo "## Duplicate - See TODO-101-feature.md" >> todos/active/DUPLICATE-TODO-fea
 **Symptoms**: Acceptance criteria in GitHub updated, local todo has old criteria
 
 **Resolution**:
+
 ```bash
 # Update local todo from GitHub
 > Use todo-manager to update TODO-101 acceptance criteria from GH #101
@@ -472,6 +499,7 @@ diff <(cat TODO-101.md | grep "Acceptance Criteria" -A 10) \
 ## Summary
 
 **Key Principles**:
+
 1. **GitHub = Requirements**, Local Todos = Implementation
 2. **Sync proactively**, don't wait for conflicts
 3. **Link everything**, maintain traceability
@@ -479,6 +507,7 @@ diff <(cat TODO-101.md | grep "Acceptance Criteria" -A 10) \
 5. **Keep both systems current**, they serve different audiences
 
 **Remember**:
+
 - Stakeholders look at GitHub for project status
 - Developers use local todos for implementation details
 - Both must stay synchronized for effective project management

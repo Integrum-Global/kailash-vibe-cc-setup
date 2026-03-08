@@ -1,20 +1,20 @@
 ---
 name: deployment-git
-description: "Deployment and Git workflow guides for Kailash applications including Docker deployment, Kubernetes orchestration, and Git workflows. Use when asking about 'deployment', 'Docker deployment', 'Kubernetes deployment', 'containerization', 'K8s', 'Git workflow', 'Git branching', 'CI/CD', 'production deployment', 'Docker compose', or 'container orchestration'."
+description: "Deployment and Git workflow guides for Kailash Rust applications including Docker multi-stage builds, Kubernetes orchestration, Git workflows, deployment onboarding, cloud deployment, and package releases. Use when asking about 'deployment', 'Docker deployment', 'Kubernetes deployment', 'containerization', 'K8s', 'Git workflow', 'Git branching', 'CI/CD', 'production deployment', 'Docker compose', 'container orchestration', 'deploy command', 'cloud deployment', 'package release', or 'deployment onboarding'."
 ---
 
 # Deployment & Git Workflows
 
-Comprehensive guides for deploying Kailash applications with Docker and Kubernetes, plus Git workflow best practices.
+Deployment patterns and Git workflows for the Kailash Rust SDK.
 
 ## Overview
 
 Production deployment patterns for:
 
-- Docker containerization
+- Docker multi-stage builds (Rust → minimal runtime image)
 - Kubernetes orchestration
 - Git workflows and branching strategies
-- CI/CD integration
+- CI/CD with cargo and self-hosted runners
 - Environment management
 
 ## Reference Documentation
@@ -41,270 +41,87 @@ Production deployment patterns for:
 
 ### Docker Deployment
 
-- **[deployment-docker-quick](deployment-docker-quick.md)** - Docker deployment quick start
-  - Dockerfile setup for Kailash apps
-  - Docker Compose configurations
-  - Multi-stage builds
-  - Environment variables
-  - Volume management
-  - Health checks
-  - Production optimizations
+- **[deployment-docker-quick](deployment-docker-quick.md)** - Docker multi-stage builds for Rust binaries
+- **[deployment-patterns](deployment-patterns.md)** - Docker Compose, K8s manifests, health checks
 
 ### Kubernetes Deployment
 
-- **[deployment-kubernetes-quick](deployment-kubernetes-quick.md)** - Kubernetes deployment guide
-  - Deployment manifests
-  - Service configuration
-  - ConfigMaps and Secrets
-  - Persistent volumes
-  - Health probes
-  - Scaling strategies
-  - Ingress setup
+- **[deployment-kubernetes-quick](deployment-kubernetes-quick.md)** - K8s deployment manifests and scaling
 
 ### Git Workflow
 
-- **[git-workflow-quick](git-workflow-quick.md)** - Git workflow best practices
-  - Branching strategies
-  - Commit conventions
-  - Pull request workflow
-  - Code review process
-  - Release management
-  - Hotfix procedures
-
-### GitHub Management
-
-- **[github-management-patterns](github-management-patterns.md)** - GitHub project and issue management
-  - Issue templates (User Story, Bug, Technical Task)
-  - Story points and estimation
-  - Project board organization
-  - Label system
+- **[git-workflow-quick](git-workflow-quick.md)** - Branch strategy and commit conventions
+- **[git-release-patterns](git-release-patterns.md)** - Pre-commit validation, release procedures, cargo publish
 
 ### Project Management
 
-- **[project-management](project-management.md)** - Project management architecture
-  - Dual-tracking system overview
-  - GitHub Issues vs Local Todos
-  - Agent coordination flow
-  - Sprint management
+- **[github-management-patterns](github-management-patterns.md)** - GitHub issues, PRs, project boards
+- **[project-management](project-management.md)** - Dual-tracking system (GitHub + local todos)
+- **[todo-github-sync](todo-github-sync.md)** - Todo/GitHub sync patterns
 
-- **[todo-github-sync](todo-github-sync.md)** - Todo ↔ GitHub issues sync patterns
-  - Naming conventions (Story X format)
-  - Workflow for creating, starting, completing stories
-  - Sub-issue management
-  - Label system
-  - Periodic sync checklists
-  - Agent coordination (todo-manager ↔ gh-manager)
+## Docker Quick Reference
 
-## Docker Patterns
-
-### Basic Dockerfile
+### Multi-Stage Rust Dockerfile
 
 ```dockerfile
-FROM python:3.11-slim
-
+FROM rust:1.82-slim AS builder
 WORKDIR /app
-
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application
+RUN apt-get update && apt-get install -y pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY . .
+RUN cargo build --release --bin my-service
 
-# Create non-root user for security
-RUN useradd -r appuser
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates libssl3 curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN useradd -r -s /bin/false appuser
 USER appuser
-
-# Use AsyncLocalRuntime for Docker
-ENV RUNTIME_TYPE=async
-
-# Health check (using python since slim image has no curl)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-
-# Run with Nexus
-CMD ["python", "-m", "app.main"]
+COPY --from=builder /app/target/release/my-service /usr/local/bin/
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://localhost:3000/health || exit 1
+CMD ["my-service"]
 ```
 
-### Docker Compose
+## Pre-Commit Quality Pipeline
 
-```yaml
-services:
-  nexus:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${DB_PASSWORD}@db:5432/${POSTGRES_DB}
-      - RUNTIME_TYPE=async
-    depends_on:
-      - db
-
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:
-```
-
-## Kubernetes Patterns
-
-### Deployment Manifest
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: kailash-app
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: kailash
-  template:
-    metadata:
-      labels:
-        app: kailash
-    spec:
-      containers:
-        - name: app
-          image: my-kailash-app:latest
-          ports:
-            - containerPort: 8000
-          env:
-            - name: RUNTIME_TYPE
-              value: "async"
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 30
-```
-
-## Git Workflow Patterns
-
-### Branch Strategy
-
-```
-main (production)
-  ↓
-develop (integration)
-  ↓
-feature/* (new features)
-hotfix/* (urgent fixes)
-release/* (release prep)
-```
-
-### Commit Conventions
-
-```
-feat: Add user authentication workflow
-fix: Resolve async runtime threading issue
-docs: Update DataFlow integration guide
-test: Add cycle workflow test cases
-chore: Bump version to 2.0.0
+```bash
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo audit
 ```
 
 ## Critical Rules
 
 ### Docker
 
-- ✅ Use NexusApp for Docker deployment
-- ✅ Implement health checks
-- ✅ Use multi-stage builds for smaller images
-- ✅ Set proper resource limits
-- ✅ Use secrets for sensitive data
-- ❌ NEVER commit secrets to images
-- ❌ NEVER run as root user
-
-### Kubernetes
-
-- ✅ Define resource requests and limits
-- ✅ Use ConfigMaps for configuration
-- ✅ Implement readiness and liveness probes
-- ✅ Use Horizontal Pod Autoscaling
-- ✅ Set up proper monitoring
-- ❌ NEVER store secrets in plain text
-- ❌ NEVER skip health checks
-- ❌ NEVER use latest tag in production
+- Use multi-stage builds (final image ~50MB)
+- Rust binaries cold-start in ~10ms
+- Unified Runtime (no sync/async split)
+- Implement health checks via Nexus `/health`
+- Use secrets for sensitive data
+- NEVER commit secrets to images
+- NEVER run as root user
 
 ### Git
 
-- ✅ Use feature branches for development
-- ✅ Write descriptive commit messages
-- ✅ Squash commits before merging
-- ✅ Use pull requests for code review
-- ✅ Tag releases semantically
-- ❌ NEVER commit directly to main
-- ❌ NEVER force push to shared branches
-- ❌ NEVER commit sensitive data
-
-## Runtime Selection
-
-| Environment | Deployment | Reason                                      |
-| ----------- | ---------- | ------------------------------------------- |
-| **Docker**  | NexusApp   | Container-optimized, built-in health checks |
-| **K8s**     | NexusApp   | Scalable, container-native                  |
-| **CLI**     | Runtime    | Direct script execution                     |
-| **Scripts** | Runtime    | Simple workflow execution                   |
-
-## When to Use This Skill
-
-Use this skill when you need to:
-
-- Run deployment onboarding for a new project
-- Release packages to PyPI or GitHub
-- Deploy solutions to AWS, Azure, or GCP
-- Deploy Kailash apps with Docker
-- Set up Kubernetes deployments
-- Configure CI/CD pipelines
-- Establish Git workflows
-- Containerize workflows
-- Scale applications in production
-- Manage environments and secrets
-
-## Environment Management
-
-### Development
-
-```bash
-# Local development
-python -m app.main
-
-# Docker development
-docker-compose up
-```
-
-### Production
-
-```bash
-# Docker production
-docker build -t app:prod .
-docker run -d -p 8000:8000 app:prod
-
-# Kubernetes production
-kubectl apply -f k8s/
-kubectl scale deployment kailash-app --replicas=5
-```
+- Use conventional commits: `feat(core): description`
+- Pre-commit validation is MANDATORY
+- Security review before EVERY commit
+- NEVER commit directly to main
+- NEVER force push to shared branches
 
 ## Related Skills
 
-- **[03-nexus](../../03-nexus/SKILL.md)** - Application deployment
-- **[02-dataflow](../../02-dataflow/SKILL.md)** - Database in containers
-- **[01-core-sdk](../../01-core-sdk/SKILL.md)** - Runtime selection
-- **[17-gold-standards](../../17-gold-standards/SKILL.md)** - Deployment best practices
+- **[03-nexus](../03-nexus/)** - Nexus API server deployment
+- **[02-dataflow](../02-dataflow/)** - DataFlow database configuration
+- **[01-core](../01-core/)** - Runtime execution patterns
+- **[26-gold-standards](../26-gold-standards/)** - Standards and best practices
 
 ## Support
 
 For deployment help, invoke:
 
-- `deployment-specialist` - Deployment onboarding, package/cloud releases, Docker/K8s
-- `git-release-specialist` - Git workflows, releases, version management
-- `nexus-specialist` - Application configuration
+- `deployment-specialist` - Deployment onboarding, package/cloud releases, Docker, K8s, CI runners
+- `git-release-specialist` - Git workflows, cargo publish, CI pipeline
+- `nexus-specialist` - Nexus server configuration

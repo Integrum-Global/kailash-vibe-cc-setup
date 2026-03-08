@@ -122,7 +122,7 @@ result = {
 
     # Execute workflow
     runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build(), parameters={
+    results, run_id = runtime.execute(workflow.build(), inputs={
         "processor": {"input_data": input_data}
     })
 

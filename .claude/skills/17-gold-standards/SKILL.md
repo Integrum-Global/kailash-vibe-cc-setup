@@ -1,16 +1,17 @@
 ---
 name: gold-standards
-description: "Mandatory best practices and gold standards for Kailash SDK development including absolute imports, parameter passing, error handling, testing policies (NO MOCKING in Tiers 2-3), workflow design, custom node development, security, documentation, and test creation. Use when asking about 'best practices', 'standards', 'gold standards', 'mandatory rules', 'required patterns', 'absolute imports', 'NO MOCKING', 'testing policy', 'error handling standards', 'security best practices', 'documentation standards', or 'workflow design standards'."
+description: "Mandatory best practices and gold standards for Kailash Rust SDK development including import organization, parameter passing, error handling, testing policies (NO MOCKING in Tiers 2-3), workflow design, custom node development, security, documentation, and test creation. Use when asking about 'best practices', 'standards', 'gold standards', 'mandatory rules', 'required patterns', 'import organization', 'NO MOCKING', 'testing policy', 'error handling standards', 'security best practices', 'documentation standards', or 'workflow design standards'."
 ---
 
 # Kailash Gold Standards - Mandatory Best Practices
 
-Mandatory best practices and standards for all Kailash SDK development. These are **required** patterns that must be followed.
+Mandatory best practices and standards for all Kailash Rust SDK development. These are **required** patterns that must be followed.
 
 ## Overview
 
 Gold standards are **mandatory** practices for:
-- Absolute imports (no relative imports)
+
+- Import and module organization
 - Parameter passing patterns
 - Error handling strategies
 - Testing policies (NO MOCKING in Tiers 2-3)
@@ -26,236 +27,264 @@ Gold standards are **mandatory** practices for:
 
 ### Code Organization
 
-#### Absolute Imports (MANDATORY)
-- **[gold-absolute-imports](gold-absolute-imports.md)** - Absolute import requirement
-  - **Rule**: ALWAYS use absolute imports, NEVER relative
-  - **Reason**: Prevents import errors, enables refactoring
-  - **Pattern**: `from kailash.workflow.builder import WorkflowBuilder`
-  - **Never**: `from ..workflow import builder`
+#### Import Organization (MANDATORY)
+
+- **[gold-absolute-imports](gold-absolute-imports.md)** - Import and module organization
+  - **Rule**: Use absolute crate paths (`use kailash_core::...`)
+  - **Rule**: Group imports: std, external crates, workspace crates
+  - **Pattern**: `use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig};`
+  - **Never**: Wildcard imports in production code (except preludes)
 
 #### Parameter Passing (MANDATORY)
+
 - **[gold-parameter-passing](gold-parameter-passing.md)** - Parameter standards
   - **Rule**: Use 4-parameter connection format
-  - **Pattern**: `workflow.add_connection(source_id, source_param, target_id, target_param)`
-  - **Rule**: Access results with dict pattern
-  - **Pattern**: `results["node_id"]["result"]`
-  - **Never**: `results["node_id"].result`
+  - **Pattern**: `builder.connect(source_id, source_param, target_id, target_param)`
+  - **Rule**: Access results via `result.results["node_id"]["field"]`
+  - **Rule**: Declare params via `input_params()` / `output_params()` in Node trait
 
 ### Testing Standards
 
 #### NO MOCKING Policy (MANDATORY)
+
 - **[gold-mocking-policy](gold-mocking-policy.md)** - NO MOCKING in Tiers 2-3
-  - **Rule**: NO mocking in integration (Tier 2) or E2E (Tier 3) tests
+  - **Rule**: NO mocking/mockall in integration (Tier 2) or E2E (Tier 3) tests
   - **Reason**: Mocking hides real-world issues
   - **Required**: Use real databases, APIs, infrastructure
-  - **Allowed**: Mocking ONLY in Tier 1 unit tests
+  - **Allowed**: Trait-based test doubles ONLY in Tier 1 unit tests
 
 #### Testing Standards (MANDATORY)
+
 - **[gold-testing](gold-testing.md)** - Testing requirements
   - **Rule**: Follow 3-tier strategy (Unit, Integration, E2E)
   - **Rule**: Tiers 2-3 use real infrastructure
-  - **Rule**: All tests must clean up resources
+  - **Rule**: Feature-gate tests (`#[cfg(feature = "integration")]`)
   - **Rule**: Tests must be deterministic
 
 #### Test Creation (MANDATORY)
+
 - **[gold-test-creation](gold-test-creation.md)** - Test creation standards
   - **Rule**: Write tests BEFORE implementation (TDD)
   - **Rule**: One assertion focus per test
   - **Rule**: Use AAA pattern (Arrange, Act, Assert)
-  - **Rule**: Descriptive test names
+  - **Rule**: Descriptive snake_case test names
 
 ### Error Handling
 
 #### Error Handling (MANDATORY)
+
 - **[gold-error-handling](gold-error-handling.md)** - Error handling requirements
-  - **Rule**: Always handle errors explicitly
-  - **Rule**: Never swallow exceptions silently
-  - **Rule**: Provide actionable error messages
-  - **Rule**: Clean up resources in finally blocks
-  - **Rule**: Log errors with context
+  - **Rule**: Always return `Result<T, E>` for fallible operations
+  - **Rule**: Use `?` operator, never `unwrap()` in production code
+  - **Rule**: Define domain errors with `thiserror`
+  - **Rule**: Log errors with `tracing` and context
+  - **Rule**: No silent error swallowing
 
 ### Workflow & Node Design
 
 #### Workflow Design (MANDATORY)
+
 - **[gold-workflow-design](gold-workflow-design.md)** - Workflow standards
-  - **Rule**: Always call `.build()` before execution
-  - **Pattern**: `runtime.execute(workflow.build())`
-  - **Rule**: Use string-based node API
-  - **Rule**: Validate inputs before processing
+  - **Rule**: Always call `builder.build(&registry)?` before execution
+  - **Pattern**: `let workflow = builder.build(&registry)?;`
+  - **Rule**: Use 4-parameter `connect()` calls
   - **Rule**: Single responsibility per workflow
 
 #### Custom Node Development (MANDATORY)
+
 - **[gold-custom-nodes](gold-custom-nodes.md)** - Custom node standards
-  - **Rule**: Extend BaseNode
-  - **Rule**: Validate all inputs
-  - **Rule**: Handle errors gracefully
-  - **Rule**: Document parameters clearly
-  - **Rule**: Return consistent output format
+  - **Rule**: Implement the `Node` trait
+  - **Rule**: Declare params via `input_params()` / `output_params()`
+  - **Rule**: Return `Pin<Box<dyn Future<...> + Send + '_>>` from execute
+  - **Rule**: Use `NodeError` for error reporting
 
 ### Security & Documentation
 
 #### Security (MANDATORY)
+
 - **[gold-security](gold-security.md)** - Security requirements
-  - **Rule**: NEVER hardcode secrets
-  - **Rule**: Use environment variables for credentials
-  - **Rule**: Validate all user inputs
-  - **Rule**: Prevent SQL injection
-  - **Rule**: Prevent code injection
-  - **Rule**: Use HTTPS for API calls
+  - **Rule**: NEVER hardcode secrets (use `dotenvy` + `std::env::var()`)
+  - **Rule**: Use `sqlx::query!` for compile-time SQL checking
+  - **Rule**: `unsafe` blocks require `// SAFETY:` comments
+  - **Rule**: `cargo audit` must pass
+  - **Rule**: No `Command::new` with user input
 
 #### Documentation (MANDATORY)
+
 - **[gold-documentation](gold-documentation.md)** - Documentation standards
-  - **Rule**: Document all public APIs
-  - **Rule**: Include code examples
-  - **Rule**: Keep docs updated with code
-  - **Rule**: Use docstrings for all functions/classes
+  - **Rule**: Rustdoc (`///`) for all public APIs
+  - **Rule**: Include `# Examples` with runnable doc tests
+  - **Rule**: `cargo test --doc` must pass
   - **Rule**: Explain WHY, not just WHAT
 
 ## Critical Gold Standards
 
-All workflow patterns follow the **canonical 4-parameter pattern** from `/01-core-sdk`.
+### 1. Proper Imports
 
-### 1. Absolute Imports ALWAYS
-```python
-# ✅ CORRECT (Gold Standard)
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime.local import LocalRuntime
+```rust
+// ✅ CORRECT (Gold Standard)
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# ❌ WRONG (Violates Gold Standard)
-from ..workflow.builder import WorkflowBuilder
-from .runtime import LocalRuntime
+// ❌ WRONG (Violates Gold Standard)
+use kailash_core::*; // Wildcard import
 ```
 
 ### 2. NO MOCKING in Tiers 2-3
-```python
-# ✅ CORRECT (Gold Standard - Tier 2)
-def test_dataflow_crud(db: DataFlow):  # Real database
-    """Test with real PostgreSQL/SQLite."""
-    workflow = db.create_workflow(...)
-    results = runtime.execute(workflow.build())
-    # Verify in actual database
 
-# ❌ WRONG (Violates Gold Standard)
-def test_dataflow_crud():
-    """Test with mocked database."""
-    db = Mock(spec=DataFlow)  # NO MOCKING in Tier 2!
-    db.create_workflow.return_value = mock_workflow
+```rust
+// ✅ CORRECT (Gold Standard - Tier 2)
+#[tokio::test]
+#[cfg(feature = "integration")]
+async fn test_dataflow_crud() {
+    dotenvy::dotenv().ok();
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL required");
+    let pool = sqlx::PgPool::connect(&db_url).await.expect("connect failed");
+    // Real database operations...
+}
+
+// ❌ WRONG (Violates Gold Standard)
+// use mockall::automock;
+// #[automock] trait Database { ... } // NO mockall in Tier 2!
 ```
 
-### 3. 4-Parameter Connections ALWAYS
-```python
-# ✅ CORRECT (Gold Standard)
-workflow.add_connection("node1", "result", "node2", "input_data")
+### 3. 4-Parameter Connections
 
-# ❌ WRONG (Violates Gold Standard)
-workflow.add_connection("node1", "node2")
+```rust
+// ✅ CORRECT (Gold Standard)
+builder.connect("node1", "result", "node2", "input_data");
+
+// ❌ WRONG (Violates Gold Standard)
+// builder.connect("node1", "node2"); // Missing output/input params
 ```
 
-### 4. Always Call .build()
-```python
-# ✅ CORRECT (Gold Standard)
-results = runtime.execute(workflow.build())
+### 4. Always build() Before Execute
 
-# ❌ WRONG (Violates Gold Standard)
-results = runtime.execute(workflow)
+```rust
+// ✅ CORRECT (Gold Standard)
+let workflow = builder.build(&registry)?;
+let result = runtime.execute(&workflow, inputs).await?;
+
+// ❌ WRONG (Violates Gold Standard)
+// runtime.execute(&builder, inputs) // Must call build() first!
 ```
 
-### 5. Dict-Based Result Access
-```python
-# ✅ CORRECT (Gold Standard)
-value = results["node_id"]["result"]
+### 5. Result-Based Error Handling
 
-# ❌ WRONG (Violates Gold Standard)
-value = results["node_id"].result
+```rust
+// ✅ CORRECT (Gold Standard)
+let value = inputs.get("key")
+    .ok_or(NodeError::MissingInput { name: "key".to_string() })?;
+
+// ❌ WRONG (Violates Gold Standard)
+let value = inputs.get("key").unwrap(); // Panics in production!
 ```
 
 ### 6. Environment Variables for Secrets
-```python
-# ✅ CORRECT (Gold Standard)
-import os
-api_key = os.environ["API_KEY"]
 
-# ❌ WRONG (Violates Gold Standard)
-api_key = "sk-1234567890abcdef"  # Hardcoded!
+```rust
+// ✅ CORRECT (Gold Standard)
+dotenvy::dotenv().ok();
+let api_key = std::env::var("API_KEY")
+    .map_err(|_| NodeError::ExecutionFailed {
+        message: "API_KEY not set".to_string(),
+        source: None,
+    })?;
+
+// ❌ WRONG (Violates Gold Standard)
+// let api_key = "sk-1234567890abcdef"; // Hardcoded!
 ```
 
 ### 7. TDD (Test-First Development)
-```python
-# ✅ CORRECT (Gold Standard)
-# 1. Write test first
-def test_user_creation():
-    user = create_user("test@example.com")
-    assert user.email == "test@example.com"
 
-# 2. Then implement
-def create_user(email):
-    return User(email=email)
+```rust
+// ✅ CORRECT (Gold Standard)
+// 1. Write test first
+#[test]
+fn test_user_creation() {
+    let user = create_user("test@example.com").expect("creation failed");
+    assert_eq!(user.email, "test@example.com");
+}
 
-# ❌ WRONG (Violates Gold Standard)
-# Write implementation first, then add tests
+// 2. Then implement
+fn create_user(email: &str) -> Result<User, AppError> {
+    Ok(User { email: email.to_string() })
+}
+
+// ❌ WRONG: Write implementation first, then add tests
 ```
 
 ### 8. Explicit Error Handling
-```python
-# ✅ CORRECT (Gold Standard)
-try:
-    results = runtime.execute(workflow.build())
-except WorkflowExecutionError as e:
-    logger.error(f"Workflow failed: {e}")
-    raise
-finally:
-    cleanup_resources()
 
-# ❌ WRONG (Violates Gold Standard)
-try:
-    results = runtime.execute(workflow.build())
-except:  # Too broad, swallows errors
-    pass  # Silent failure!
+```rust
+// ✅ CORRECT (Gold Standard)
+match runtime.execute(&workflow, inputs).await {
+    Ok(result) => {
+        tracing::info!(run_id = %result.run_id, "workflow completed");
+        Ok(result)
+    }
+    Err(e) => {
+        tracing::error!(error = %e, "workflow failed");
+        Err(e)
+    }
+}
+
+// ❌ WRONG (Violates Gold Standard)
+// let _ = runtime.execute(&workflow, inputs).await; // Silently discards result!
 ```
 
 ## Compliance Checklist
 
 ### Before Every Commit
-- [ ] All imports are absolute
+
+- [ ] All imports use absolute crate paths
 - [ ] All connections use 4 parameters
-- [ ] Called `.build()` before execute
+- [ ] `builder.build(&registry)?` called before execute
 - [ ] No hardcoded secrets
-- [ ] Error handling present
+- [ ] Error handling with `Result` and `?`
 - [ ] Tests written (TDD)
 - [ ] No mocking in Tier 2-3 tests
-- [ ] Documentation updated
+- [ ] Rustdoc on public APIs
 
 ### Before Every PR
-- [ ] Gold standards validator passed
-- [ ] All tests passing
-- [ ] Code reviewed for compliance
-- [ ] Security validation passed
-- [ ] Documentation complete
+
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --workspace -- -D warnings` clean
+- [ ] `cargo fmt --all --check` passes
+- [ ] `cargo audit` clean
+- [ ] Security review completed (`security-reviewer`)
+- [ ] Code review completed (`intermediate-reviewer`)
 
 ### Before Every Release
+
 - [ ] Full gold standards audit
+- [ ] `cargo test --doc --workspace` passes
 - [ ] All patterns compliant
 - [ ] Security audit complete
-- [ ] Documentation verified
 
 ## Enforcement
 
 ### Automated Validation
-```bash
-# Run gold standards validator
-python -m kailash.validation.gold_standards validate-all
 
-# Check specific standards
-python -m kailash.validation.gold_standards check-imports
-python -m kailash.validation.gold_standards check-mocking
-python -m kailash.validation.gold_standards check-security
+```bash
+# Run all checks
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
+cargo fmt --all --check
+cargo audit
+cargo test --doc --workspace
+
+# With integration tests
+cargo test --workspace --features integration
 ```
 
 ### Code Review Focus
-- Check absolute imports
+
+- Check import organization
 - Verify NO MOCKING policy
-- Validate connection format
-- Check error handling
+- Validate 4-parameter connections
+- Check error handling (no unwrap in production)
 - Verify TDD approach
 - Review security patterns
 
@@ -263,55 +292,24 @@ python -m kailash.validation.gold_standards check-security
 
 ### Problems They Prevent
 
-**Absolute Imports**: Prevent import errors during refactoring
+**Import Organization**: Prevent dependency confusion and circular imports
 
 **NO MOCKING**: Catch real database issues, API timeouts, race conditions
 
 **4-Parameter Connections**: Prevent wrong data routing
 
-**.build() Requirement**: Prevent TypeError at runtime
+**build() Requirement**: Validate workflow DAG before execution
 
-**Error Handling**: Prevent silent failures
+**Error Handling**: Prevent panics in async code (tears down tokio runtime)
 
 **TDD**: Prevent bugs before they exist
 
-**Security Standards**: Prevent credential leaks, injection attacks
-
-## Quick Patterns
-
-### Correct Import Pattern
-```python
-# ✅ CORRECT: Absolute imports
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-
-# ❌ WRONG: Relative imports
-from ..workflow import builder  # NEVER use this
-```
-
-### Correct Execution Pattern
-```python
-# ✅ CORRECT: Always .build()
-results, run_id = runtime.execute(workflow.build())
-
-# ❌ WRONG: Missing .build()
-results = runtime.execute(workflow)  # WILL FAIL
-```
-
-### Correct Testing Pattern
-```python
-# Tier 2-3: Real infrastructure
-@pytest.fixture
-def db():
-    return DataFlow("sqlite:///:memory:")  # Real DB
-
-# ❌ WRONG in Tier 2-3: Mocking
-@patch('module.function')  # PROHIBITED
-```
+**Security Standards**: Prevent credential leaks, SQL injection, command injection
 
 ## When to Use This Skill
 
 Use this skill:
+
 - **Before writing code** - Know the standards
 - **During code review** - Validate compliance
 - **When in doubt** - Check gold standards
@@ -320,15 +318,16 @@ Use this skill:
 
 ## Related Skills
 
-- **[16-validation-patterns](../16-validation-patterns/SKILL.md)** - Validation tools
-- **[15-error-troubleshooting](../15-error-troubleshooting/SKILL.md)** - Error patterns
-- **[12-testing-strategies](../12-testing-strategies/SKILL.md)** - Testing strategies
-- **[01-core-sdk](../01-core-sdk/SKILL.md)** - Core patterns
+- **[13-testing-strategies](../13-testing-strategies/SKILL.md)** - Testing strategies
+- **[01-core](../01-core/SKILL.md)** - Core SDK patterns (if exists)
+- **[02-dataflow](../02-dataflow/SKILL.md)** - DataFlow patterns
+- **[03-nexus](../03-nexus/SKILL.md)** - Nexus patterns
 
 ## Support
 
 For gold standards compliance, invoke:
-- `gold-standards-validator` - Automated compliance checking
-- `pattern-expert` - Pattern validation
+
+- `intermediate-reviewer` - Code review after changes
+- `security-reviewer` - Security audit before commits
 - `testing-specialist` - Testing compliance
-- `requirements-analyst` - Standards documentation
+- `rust-architect` - Architecture decisions

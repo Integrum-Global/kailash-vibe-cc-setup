@@ -1,147 +1,282 @@
 ---
-skill: nexus-quickstart
-description: Zero-config Nexus setup and basic workflow registration. Start here for all Nexus applications.
-priority: CRITICAL
-tags: [nexus, quickstart, zero-config, setup]
+name: nexus-quickstart
+description: "Nexus in 5 minutes: deploy workflows as API + CLI + MCP simultaneously. Use when asking 'nexus quickstart', 'nexus getting started', 'first nexus server', or 'multi-channel deployment'."
 ---
 
-# Nexus Quickstart
+# Nexus Quickstart Skill
 
-Get started with Kailash Nexus for multi-channel deployment.
+Nexus in 5 minutes: deploy workflows as API + CLI + MCP simultaneously.
 
-## Install
+## Usage
+
+`/nexus-quickstart` -- Fastest path to a running Nexus API server with authentication
+
+## What Nexus Does
+
+Nexus is a multi-channel deployment platform built on axum + tower. Register a handler once; it becomes available as:
+
+- HTTP API endpoint (`POST /api/{handler_name}`)
+- CLI command (`nexus {handler_name} --arg value`)
+- MCP tool (via `/mcp/sse` for AI agent integration)
+
+## Minimal Server
+
+```rust
+use kailash_nexus::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenvy::dotenv().ok();
+
+    let mut nexus = Nexus::new();
+
+    // Handlers receive ValueMap and return Result<Value, NexusError>
+    nexus.handler("greet", ClosureHandler::with_params(
+        |inputs: ValueMap| async move {
+            let name = inputs
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("World");
+            Ok(Value::from(format!("Hello, {name}!")))
+        },
+        vec![HandlerParam::new("name", HandlerParamType::String)],
+    ));
+
+    nexus.start().await?;
+    // API:  POST /api/greet     {"name": "Alice"}
+    // CLI:  nexus greet --name Alice
+    // MCP:  GET  /mcp/sse
+    Ok(())
+}
+```
+
+## Handler Pattern
+
+Handlers always receive `ValueMap` and return `Result<Value, NexusError>`. Parameter metadata is declared via `HandlerParam` for schema generation (CLI args, MCP tool schema, API docs).
+
+```rust
+use kailash_nexus::handler::{ClosureHandler, HandlerParam, HandlerParamType};
+use kailash_value::{Value, ValueMap};
+use std::sync::Arc;
+
+// Define parameters for schema generation
+let params = vec![
+    HandlerParam::new("text", HandlerParamType::String)
+        .with_description("Text to process"),
+    HandlerParam::new("max_len", HandlerParamType::Integer)
+        .required(false)
+        .with_default(Value::Integer(256)),
+    HandlerParam::new("enabled", HandlerParamType::Bool)
+        .required(false)
+        .with_default(Value::Bool(true)),
+];
+
+nexus.handler("process", ClosureHandler::with_params(
+    |inputs: ValueMap| async move {
+        let text = inputs.get("text")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let max_len = inputs.get("max_len")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(256) as usize;
+        let enabled = inputs.get("enabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true);
+
+        if !enabled {
+            return Ok(Value::from("processing disabled"));
+        }
+
+        let truncated = text.len() > max_len;
+        let result = &text[..max_len.min(text.len())];
+        Ok(Value::from(format!("result={result}, truncated={truncated}")))
+    },
+    params,
+));
+```
+
+## Handler with Workflow
+
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig};
+use kailash_core::node::NodeRegistry;
+use kailash_value::{Value, ValueMap};
+use kailash_nexus::handler::{ClosureHandler, HandlerParam, HandlerParamType};
+use kailash_nexus::error::NexusError;
+use std::sync::Arc;
+
+let mut node_reg = NodeRegistry::new();
+kailash_core::nodes::register_system_nodes(&mut node_reg);
+let node_reg = Arc::new(node_reg);
+
+// Build workflow once
+let mut builder = WorkflowBuilder::new();
+builder
+    .add_node("TextTransformNode", "upper", {
+        let mut c = ValueMap::new();
+        c.insert(Arc::from("operation"), Value::String(Arc::from("uppercase")));
+        c
+    })
+    .add_node("LogNode", "log", ValueMap::new())
+    .connect("upper", "result", "log", "data");
+
+let workflow = Arc::new(builder.build(&node_reg)?);
+let runtime = Arc::new(Runtime::new(RuntimeConfig::default(), Arc::clone(&node_reg)));
+
+// Capture in handler closure
+let params = vec![
+    HandlerParam::new("text", HandlerParamType::String)
+        .with_description("Text to transform"),
+];
+nexus.handler("transform", ClosureHandler::with_params(
+    move |inputs: ValueMap| {
+        let workflow = Arc::clone(&workflow);
+        let runtime = Arc::clone(&runtime);
+        async move {
+            let result = runtime.execute(&workflow, inputs).await
+                .map_err(|e| NexusError::Internal(e.to_string()))?;
+
+            let output = result.results.get("upper")
+                .and_then(|m| m.get("result"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            Ok(Value::from(output))
+        }
+    },
+    params,
+));
+```
+
+## Preset Middleware
+
+One-line middleware configuration:
+
+```rust
+use kailash_nexus::Nexus;
+use kailash_nexus::middleware::Preset;
+
+// None: No middleware (raw axum, development only)
+let nexus = Nexus::new().preset(Preset::None);
+
+// Lightweight: Permissive CORS + request logging
+let nexus = Nexus::new().preset(Preset::Lightweight);
+
+// Standard: Strict CORS + rate limiting + logging + body limit
+let nexus = Nexus::new().preset(Preset::Standard);
+
+// SaaS: Standard + security response headers
+let nexus = Nexus::new().preset(Preset::SaaS);
+
+// Enterprise: SaaS + stricter rate limits, body limits, headers
+let nexus = Nexus::new().preset(Preset::Enterprise);
+```
+
+## Adding Auth
+
+JWT authentication is a separate Tower layer applied to the axum Router. Nexus does not have a built-in `jwt_secret()` method. Instead, build the JWT layer and apply it when composing the router.
+
+```rust
+use kailash_nexus::auth::jwt::{JwtAuthLayer, JwtConfig, AuthUser, JwtClaims, create_jwt};
+use axum::{Router, routing::get};
+
+dotenvy::dotenv().ok();
+let secret = std::env::var("JWT_SECRET")
+    .expect("JWT_SECRET must be set in .env");
+
+let jwt_layer = JwtAuthLayer::new(JwtConfig::new(&secret))?;
+
+// Build your router with the JWT layer
+let app = Router::new()
+    .route("/api/protected", get(protected_handler))
+    .layer(jwt_layer);
+
+async fn protected_handler(AuthUser(claims): AuthUser) -> String {
+    // AuthUser wraps JwtClaims, extracted from validated JWT
+    format!(
+        "user_id: {}, role: {:?}, tenant: {:?}",
+        claims.sub, claims.role, claims.tenant_id
+    )
+}
+```
+
+## Custom Middleware Configuration
+
+```rust
+use kailash_nexus::Nexus;
+use kailash_nexus::middleware::MiddlewareConfig;
+
+let config = MiddlewareConfig::builder()
+    .logging(true)
+    .build();
+
+let nexus = Nexus::new().middleware(config);
+```
+
+## MCP Integration
+
+When `enable_mcp` is `true` (the default) in `NexusConfig`, all registered handlers are automatically exposed as MCP tools via SSE at `/mcp/message` and `/mcp/sse`.
+
+For Claude Desktop, add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-service": {
+      "url": "http://localhost:3000/mcp/sse"
+    }
+  }
+}
+```
+
+## Custom Port and Config
+
+```rust
+use kailash_nexus::Nexus;
+use kailash_nexus::config::NexusConfig;
+
+// Default: 0.0.0.0:3000
+nexus.start().await?;
+
+// Custom port via NexusConfig
+let nexus = Nexus::new().with_config(NexusConfig {
+    host: "127.0.0.1".to_string(),
+    port: 8080,
+    ..NexusConfig::default()
+});
+nexus.start().await?;
+
+// Or mutate config
+let mut nexus = Nexus::new();
+nexus.set_config(NexusConfig {
+    port: 9000,
+    ..NexusConfig::default()
+});
+
+// With graceful shutdown
+nexus.start_with_shutdown(async {
+    tokio::signal::ctrl_c().await.expect("ctrl-c listener");
+}).await?;
+```
+
+## Method Aliases
+
+Nexus provides aliases for common conventions:
+
+```rust
+// All equivalent to nexus.handler(name, func):
+nexus.register("name", handler);
+nexus.register_handler("name", handler);
+
+// All equivalent to nexus.start():
+nexus.run().await?;
+nexus.serve().await?;
+```
+
+## Verify
 
 ```bash
-pip install kailash-nexus
+cargo test -p kailash-nexus -- --nocapture 2>&1
 ```
 
-## Quick Start
-
-```python
-from kailash_nexus import Nexus
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-
-# Create Nexus app
-app = Nexus()
-
-# Register a workflow handler
-@app.route("/greet")
-def greet(name: str = "World"):
-    workflow = WorkflowBuilder()
-    workflow.add_node("TextTransformNode", "greeting", {
-        "template": f"Hello, {name}!",
-    })
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build())
-    return results["greeting"]
-
-# Start server
-app.serve(port=3000)
-```
-
-## Handler Registration
-
-```python
-from kailash_nexus import Nexus
-
-app = Nexus()
-
-# Simple function handler
-@app.route("/echo")
-def echo(message: str):
-    return {"echo": message}
-
-# With method specification
-@app.route("/users", methods=["POST"])
-def create_user(name: str, email: str):
-    # Create user logic
-    return {"user": {"name": name, "email": email}}
-
-# With workflow execution
-@app.route("/process")
-def process(data: str):
-    workflow = WorkflowBuilder()
-    workflow.add_node("JSONTransformNode", "transform", {
-        "expression": "@.value",
-    })
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(workflow.build(), {"data": data})
-    return results["transform"]
-```
-
-## Middleware
-
-```python
-from kailash_nexus import Nexus
-
-app = Nexus()
-
-# CORS
-app.add_middleware("cors", {
-    "origins": ["http://localhost:3000"],
-    "methods": ["GET", "POST"],
-})
-
-# Rate limiting
-app.add_middleware("rate_limit", {
-    "max_requests": 100,
-    "window_seconds": 60,
-})
-
-# Authentication
-app.add_middleware("auth", {
-    "type": "jwt",
-    "secret": "your-jwt-secret",
-})
-```
-
-## Presets
-
-```python
-from kailash_nexus import Nexus
-
-# Lightweight -- minimal middleware
-app = Nexus(preset="lightweight")
-
-# Standard -- CORS + rate limiting + logging
-app = Nexus(preset="standard")
-
-# Enterprise -- full middleware stack
-app = Nexus(preset="enterprise")
-```
-
-## With DataFlow
-
-```python
-from kailash_nexus import Nexus
-from kailash_dataflow import DataFlow, db
-
-@db.model
-class Task:
-    title: str
-    done: bool = False
-
-df = DataFlow("sqlite:///tasks.db")
-df.register_model(Task)
-
-app = Nexus()
-app.register_dataflow(df)
-app.serve(port=3000)
-# Auto-generates CRUD endpoints for Task
-```
-
-## Custom Port
-
-```python
-app = Nexus()
-app.serve(port=8080)  # Default is 3000
-```
-
-## Related Skills
-
-- **[01-core-sdk](../01-core-sdk/SKILL.md)** - Workflow creation
-- **[02-dataflow](../02-dataflow/SKILL.md)** - Database integration
-- **[04-kaizen](../04-kaizen/SKILL.md)** - AI agent integration
-
-<!-- Trigger Keywords: nexus quickstart, nexus setup, nexus server, nexus API, nexus deployment -->
+<!-- Trigger Keywords: nexus quickstart, getting started, first nexus server, multi-channel, Nexus::new, handler registration, ClosureHandler, HandlerParam, ValueMap handler, preset middleware, Nexus start, Nexus serve, NexusConfig -->

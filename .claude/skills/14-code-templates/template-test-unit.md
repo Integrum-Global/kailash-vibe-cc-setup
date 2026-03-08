@@ -89,7 +89,7 @@ else:
         runtime = LocalRuntime()
 
         # Test with empty data
-        results, _ = runtime.execute(workflow.build(), parameters={
+        results, _ = runtime.execute(workflow.build(), inputs={
             "edge_test": {"data": []}
         })
 

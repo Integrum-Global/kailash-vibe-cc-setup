@@ -1,102 +1,413 @@
 ---
 name: dataflow-multi-tenancy
-description: "Multi-tenant patterns with DataFlow. Use when multi-tenant, tenant isolation, SaaS, __dataflow__ config, or tenant_id field."
+description: "Multi-tenancy patterns for kailash-dataflow using QueryInterceptor and TenantContext. Use when asking 'multi-tenancy', 'tenant isolation', 'QueryInterceptor', 'TenantContext', 'tenant_id column', 'per-tenant queries', 'admin bypass', 'tenant middleware', or 'tenant propagation'."
 ---
 
 # DataFlow Multi-Tenancy
 
-Automatic tenant isolation for SaaS applications using DataFlow enterprise features.
+Complete guide to tenant isolation at the query level using `QueryInterceptor`,
+`TenantContext`, and `TenantContextMiddleware`.
 
-> **Skill Metadata**
-> Category: `dataflow`
-> Priority: `MEDIUM`
-> SDK Version: `0.9.25+ / DataFlow 0.6.0`
-> Related Skills: [`dataflow-models`](#), [`dataflow-crud-operations`](#)
-> Related Subagents: `dataflow-specialist` (enterprise architecture)
+Source: `crates/kailash-dataflow/src/tenancy/`
 
-## Quick Reference
+---
 
-- **Enable**: `__dataflow__ = {'multi_tenant': True}`
-- **Auto-Adds**: `tenant_id` field to model
-- **Auto-Filter**: All queries filtered by current tenant
-- **Validation**: Prevents cross-tenant access
+## Architecture Overview
 
-## Core Pattern
+Multi-tenancy in DataFlow works by intercepting SQL queries and automatically
+injecting tenant-scoped conditions. No per-tenant schemas are needed -- all
+tenants share tables, with a `tenant_id` column providing row-level isolation.
 
-```python
-from dataflow import DataFlow
+The pipeline:
 
-db = DataFlow()
+1. **`TenantContextMiddleware`** extracts tenant identity from HTTP headers or JWT claims
+2. **`TenantContext`** is propagated via `ExecutionContext.workflow_inputs` using well-known keys
+3. **CRUD nodes** auto-detect tenant context and call the **`QueryInterceptor`**
+4. **`QueryInterceptor`** modifies SQL to inject tenant conditions
 
-@db.model
-class Order:
-    customer_id: int
-    total: float
-    status: str = 'pending'
+### What Gets Modified
 
-    __dataflow__ = {
-        'multi_tenant': True,     # Automatic tenant isolation
-        'soft_delete': True,      # Preserve deleted data
-        'audit_log': True         # Track all changes
+| Statement | Injection Point                                                     |
+| --------- | ------------------------------------------------------------------- |
+| SELECT    | Adds `WHERE tenant_id = ?` (or `AND tenant_id = ?` if WHERE exists) |
+| INSERT    | Prepends `tenant_id` column and `?` value to the column/value lists |
+| UPDATE    | Adds `AND tenant_id = ?` to the WHERE clause                        |
+| DELETE    | Adds `AND tenant_id = ?` to the WHERE clause                        |
+
+The tenant column is **never** included in output records returned by CRUD nodes.
+
+---
+
+## TenantId -- Strongly-Typed Identifier
+
+```rust
+use kailash_dataflow::tenancy::TenantId;
+
+let id = TenantId::new("org-123");
+assert_eq!(id.as_str(), "org-123");
+assert_eq!(format!("{id}"), "org-123");
+
+// From conversions
+let id2 = TenantId::from("org-456");
+let id3 = TenantId::from("org-789".to_string());
+```
+
+---
+
+## TenantContext -- Tenant + Column Configuration
+
+`TenantContext` carries the tenant identity, the database column name used for
+isolation, and an optional admin bypass flag.
+
+```rust
+use kailash_dataflow::tenancy::{TenantId, TenantContext};
+
+// Basic context: tenant "org-123", column "tenant_id"
+let ctx = TenantContext::new(TenantId::new("org-123"), "tenant_id");
+assert_eq!(ctx.tenant_id().as_str(), "org-123");
+assert_eq!(ctx.column_name(), "tenant_id");
+assert!(!ctx.is_bypass());
+
+// Custom column name
+let ctx = TenantContext::new(TenantId::new("org-42"), "org_id");
+assert_eq!(ctx.column_name(), "org_id");
+
+// Admin bypass -- DISABLES all tenant filtering
+let admin_ctx = TenantContext::new(TenantId::new("admin"), "tenant_id")
+    .with_bypass(true);
+assert!(admin_ctx.is_bypass());
+```
+
+**Admin bypass warning:** When `bypass` is `true`, the `QueryInterceptor` skips
+all tenant filtering. This means queries can read/write across all tenants.
+Use with extreme caution -- accidental bypass leads to data isolation breaches.
+
+---
+
+## Propagation via ExecutionContext
+
+Tenant context is propagated through workflow execution using well-known keys
+in `ExecutionContext.workflow_inputs`:
+
+| Key                 | Value             | Default       |
+| ------------------- | ----------------- | ------------- |
+| `__tenant_id__`     | Tenant ID string  | (required)    |
+| `__tenant_column__` | DB column name    | `"tenant_id"` |
+| `__tenant_bypass__` | Admin bypass flag | `false`       |
+
+### Injecting into Workflow Inputs
+
+```rust
+use kailash_dataflow::tenancy::{TenantId, TenantContext};
+use kailash_value::ValueMap;
+
+let ctx = TenantContext::new(TenantId::new("org-42"), "tenant_id");
+
+let mut inputs = ValueMap::new();
+ctx.inject_into_workflow_inputs(&mut inputs);
+// inputs now contains:
+//   "__tenant_id__"     -> Value::String("org-42")
+//   "__tenant_column__" -> Value::String("tenant_id")
+//   "__tenant_bypass__" -> Value::Bool(false)
+```
+
+### Extracting from Workflow Inputs
+
+```rust
+use kailash_dataflow::tenancy::TenantContext;
+use kailash_value::ValueMap;
+
+fn handle_request(inputs: &ValueMap) {
+    if let Some(ctx) = TenantContext::extract_from_workflow_inputs(inputs) {
+        // Multi-tenancy is active
+        let tenant = ctx.tenant_id().as_str();
+        let column = ctx.column_name();
+        let bypass = ctx.is_bypass();
+    } else {
+        // No multi-tenancy configured for this execution
     }
-
-# Automatically adds tenant_id field
-# All queries filtered by tenant automatically
-
-workflow = WorkflowBuilder()
-workflow.add_node("OrderCreateNode", "create", {
-    "customer_id": 123,
-    "total": 250.00,
-    "tenant_id": "tenant_abc"  # Automatic isolation
-})
-
-# List only shows current tenant's orders
-workflow.add_node("OrderListNode", "list", {
-    "filter": {"status": "completed"},
-    "tenant_id": "tenant_abc"  # Filters automatically
-})
+}
 ```
 
-## Auto-Wired Multi-Tenancy (v0.11.0)
+Defaults when keys are partially present:
 
-Multi-tenancy is now auto-wired into the engine via `QueryInterceptor`, which hooks into 8 SQL execution points:
+- Missing `__tenant_column__` -> defaults to `"tenant_id"`
+- Missing `__tenant_bypass__` -> defaults to `false`
+- Missing `__tenant_id__` -> returns `None` (no tenant context)
 
-- All SELECT, INSERT, UPDATE, DELETE operations are automatically intercepted
-- Tenant filtering is injected at the SQL level, not the application level
-- No manual `tenant_id` parameter needed in workflow nodes when tenant context is set
+---
 
-```python
-# Set tenant context once; all queries are automatically filtered
-from dataflow.tenancy import TenantContextSwitch
+## QueryInterceptor -- SQL Modification
 
-async with TenantContextSwitch(db, tenant_id="tenant_abc"):
-    # All operations inside this block are tenant-scoped
-    results = await runtime.execute_workflow_async(workflow.build(), inputs={})
+The interceptor modifies raw SQL strings to inject tenant conditions. It does
+not use a full SQL parser -- it uses pattern matching optimized for the SQL
+patterns generated by the DataFlow query builder.
+
+### Direct Usage
+
+```rust
+use kailash_dataflow::tenancy::{TenantId, TenantContext, QueryInterceptor};
+
+let ctx = TenantContext::new(TenantId::new("org-123"), "tenant_id");
+let interceptor = QueryInterceptor::new(&ctx);
+
+// SELECT: adds WHERE tenant_id = ?
+let result = interceptor
+    .intercept_select("SELECT id, name FROM users")
+    .expect("should succeed");
+assert!(result.sql.contains("WHERE tenant_id = ?"));
+assert_eq!(result.params.len(), 1);
+// result.params[0] = Value::from("org-123")
+
+// SELECT with existing WHERE: appends AND tenant_id = ?
+let result = interceptor
+    .intercept_select("SELECT * FROM users WHERE active = ?")
+    .expect("should succeed");
+// -> "SELECT * FROM users WHERE active = ? AND tenant_id = ?"
+
+// INSERT: adds tenant_id column and value
+let result = interceptor
+    .intercept_insert("INSERT INTO users (name) VALUES (?)")
+    .expect("should succeed");
+assert!(result.sql.contains("tenant_id, name"));
+// The ? placeholder for tenant_id is prepended in the VALUES list
+
+// UPDATE: adds AND tenant_id = ?
+let result = interceptor
+    .intercept_update("UPDATE users SET name = ? WHERE id = ?")
+    .expect("should succeed");
+// -> "UPDATE users SET name = ? WHERE id = ? AND tenant_id = ?"
+
+// DELETE: adds AND tenant_id = ?
+let result = interceptor
+    .intercept_delete("DELETE FROM users WHERE id = ?")
+    .expect("should succeed");
+// -> "DELETE FROM users WHERE id = ? AND tenant_id = ?"
 ```
 
-## Multi-Tenant Features
+### Auto-Detection
 
-- **Tenant Isolation**: Automatic filtering by tenant_id
-- **Data Partitioning**: Separate data per tenant
-- **Security**: Prevents cross-tenant access
-- **Audit Trails**: Track tenant-specific changes
-- **Auto-Wired Interceptor**: QueryInterceptor at 8 SQL execution points (v0.11.0)
+```rust
+use kailash_dataflow::tenancy::{TenantId, TenantContext, QueryInterceptor};
 
-## Documentation References
+let ctx = TenantContext::new(TenantId::new("org-123"), "tenant_id");
+let interceptor = QueryInterceptor::new(&ctx);
 
-### Primary Sources
+// Auto-detects statement type from leading keyword
+let result = interceptor.intercept_query("SELECT * FROM users")?;
+let result = interceptor.intercept_query("INSERT INTO users (name) VALUES (?)")?;
+let result = interceptor.intercept_query("UPDATE users SET name = ?")?;
+let result = interceptor.intercept_query("DELETE FROM users WHERE id = ?")?;
 
-### Specialist Reference
-- **DataFlow Specialist**: [`.claude/skills/dataflow-specialist.md`](../../dataflow-specialist.md#L296-L303)
+// DDL statements are NOT supported
+let err = interceptor.intercept_query("DROP TABLE users");
+// -> InterceptError::UnsupportedStatement
+```
 
-## Quick Tips
+### Bulk INSERT Handling
 
-- Add `multi_tenant: True` to `__dataflow__`
-- tenant_id automatically added to model
-- All queries filtered by tenant
-- Prevents cross-tenant access
-- Perfect for SaaS applications
+The interceptor correctly handles multi-row INSERT statements. Each value group
+gets a `?` for the tenant ID:
 
-## Keywords for Auto-Trigger
+```rust
+use kailash_dataflow::tenancy::{TenantId, TenantContext, QueryInterceptor};
 
-<!-- Trigger Keywords: multi-tenant, tenant isolation, SaaS, __dataflow__ config, tenant_id, multi-tenancy, tenant data -->
+let ctx = TenantContext::new(TenantId::new("org-123"), "tenant_id");
+let interceptor = QueryInterceptor::new(&ctx);
+
+let result = interceptor
+    .intercept_insert("INSERT INTO users (name) VALUES (?), (?), (?)")
+    .expect("should succeed");
+// SQL: INSERT INTO users (tenant_id, name) VALUES (?, ?), (?, ?), (?, ?)
+// params: [Value::from("org-123"), Value::from("org-123"), Value::from("org-123")]
+// One tenant param per row
+assert_eq!(result.params.len(), 3);
+```
+
+### InterceptResult
+
+```rust
+use kailash_dataflow::tenancy::InterceptResult;
+use kailash_value::Value;
+
+// The result contains:
+// - sql: String       -- modified SQL with tenant conditions
+// - params: Vec<Value> -- additional parameters to bind for tenant condition
+//
+// For SELECT/UPDATE/DELETE: params are appended AFTER the caller's WHERE params
+// For INSERT: params are prepended BEFORE the caller's value params (one per row)
+```
+
+---
+
+## TenantContextMiddleware -- HTTP/JWT Extraction
+
+Extracts tenant identity from request data (headers or JWT claims) and injects
+it into `ExecutionContext`.
+
+### From HTTP Header
+
+```rust
+use kailash_dataflow::tenancy::middleware::TenantContextMiddleware;
+use kailash_value::{Value, ValueMap};
+use std::sync::Arc;
+
+let mw = TenantContextMiddleware::from_header("X-Tenant-Id");
+
+// Simulate request headers
+let mut headers = ValueMap::new();
+headers.insert(Arc::from("X-Tenant-Id"), Value::String(Arc::from("org-123")));
+
+let ctx = mw.extract(&headers);
+assert!(ctx.is_some());
+assert_eq!(ctx.as_ref().map(|c| c.tenant_id().as_str()), Some("org-123"));
+```
+
+### From JWT Claim
+
+```rust
+use kailash_dataflow::tenancy::middleware::TenantContextMiddleware;
+use kailash_value::{Value, ValueMap};
+use std::sync::Arc;
+
+let mw = TenantContextMiddleware::from_jwt_claim("org");
+
+// Simulate decoded JWT claims
+let mut claims = ValueMap::new();
+claims.insert(Arc::from("org"), Value::String(Arc::from("org-jwt-1")));
+claims.insert(Arc::from("sub"), Value::String(Arc::from("user-1")));
+
+let ctx = mw.extract(&claims).expect("should extract");
+assert_eq!(ctx.tenant_id().as_str(), "org-jwt-1");
+```
+
+### Custom Column Name
+
+```rust
+use kailash_dataflow::tenancy::middleware::TenantContextMiddleware;
+
+let mw = TenantContextMiddleware::from_header("X-Org-Id")
+    .with_column("org_id");
+
+assert_eq!(mw.tenant_column(), "org_id");
+```
+
+### Injecting into ExecutionContext
+
+```rust
+use kailash_dataflow::tenancy::middleware::TenantContextMiddleware;
+use kailash_dataflow::tenancy::TenantContext;
+use kailash_core::ExecutionContext;
+use kailash_value::{Value, ValueMap};
+use std::sync::Arc;
+
+let mw = TenantContextMiddleware::from_header("X-Tenant-Id");
+
+let mut headers = ValueMap::new();
+headers.insert(Arc::from("X-Tenant-Id"), Value::String(Arc::from("org-inject")));
+
+let mut exec_ctx = ExecutionContext::new("run-1", "node-1");
+mw.inject_into_context(&headers, &mut exec_ctx)?;
+
+// Verify injection
+let extracted = TenantContext::extract_from_workflow_inputs(&exec_ctx.workflow_inputs);
+assert!(extracted.is_some());
+assert_eq!(extracted.as_ref().map(|c| c.tenant_id().as_str()), Some("org-inject"));
+```
+
+### Error Handling
+
+Missing headers/claims return `InterceptError::InvalidContext`:
+
+```rust
+use kailash_dataflow::tenancy::middleware::TenantContextMiddleware;
+use kailash_core::ExecutionContext;
+use kailash_value::ValueMap;
+
+let mw = TenantContextMiddleware::from_header("X-Tenant-Id");
+let empty_headers = ValueMap::new();
+
+let mut exec_ctx = ExecutionContext::new("run-1", "node-1");
+let result = mw.inject_into_context(&empty_headers, &mut exec_ctx);
+assert!(result.is_err());
+// Error message: "tenant header 'X-Tenant-Id' not found in request data"
+```
+
+---
+
+## How CRUD Nodes Use Multi-Tenancy
+
+All generated CRUD and bulk nodes automatically detect tenant context in
+`ExecutionContext.workflow_inputs`. You do not need to manually call
+`QueryInterceptor` -- the nodes handle it internally.
+
+When tenant context IS present:
+
+- SELECT queries get `WHERE tenant_id = ?` appended
+- INSERT queries get `tenant_id` column and value injected
+- UPDATE queries get `AND tenant_id = ?` appended to WHERE
+- DELETE queries get `AND tenant_id = ?` appended to WHERE
+- Output records have the tenant column **stripped** (never exposed to callers)
+
+When tenant context IS NOT present:
+
+- Queries execute without any tenant filtering (single-tenant mode)
+
+When admin bypass IS enabled:
+
+- Queries execute without tenant filtering (cross-tenant access)
+
+---
+
+## Testing Multi-Tenant Workflows
+
+```rust
+use kailash_dataflow::prelude::*;
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_value::{Value, ValueMap};
+use std::{collections::BTreeMap, sync::Arc};
+
+async fn test_tenant_isolation() -> Result<(), Box<dyn std::error::Error>> {
+    let mut df = DataFlow::new("sqlite::memory:").await?;
+
+    let model = ModelDefinition::new("Item", "items")
+        .field("id", FieldType::Integer, |f| f.primary_key())
+        .field("name", FieldType::Text, |f| f.required())
+        .auto_timestamps();
+    df.register_model(model)?;
+
+    df.execute_raw(
+        "CREATE TABLE items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            tenant_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )"
+    ).await?;
+
+    let mut registry = NodeRegistry::default();
+    df.register_nodes(&mut registry);
+    let registry = Arc::new(registry);
+
+    // Build a workflow that creates an item
+    let mut builder = WorkflowBuilder::new();
+    builder.add_node("CreateItem", "create", ValueMap::new());
+    let workflow = builder.build(&registry)?;
+    let runtime = Runtime::new(RuntimeConfig::default(), Arc::clone(&registry));
+
+    // Execute with tenant context injected into inputs
+    let tenant_ctx = TenantContext::new(TenantId::new("org-A"), "tenant_id");
+    let mut inputs = BTreeMap::new();
+    inputs.insert(Arc::from("name"), Value::String(Arc::from("Tenant A Item")));
+    tenant_ctx.inject_into_workflow_inputs(&mut inputs);
+
+    let result = runtime.execute(&workflow, inputs).await?;
+    // The INSERT includes tenant_id = 'org-A' automatically
+    // The output record does NOT contain "tenant_id" key
+
+    Ok(())
+}
+```
+
+<!-- Trigger Keywords: multi-tenancy, tenant isolation, QueryInterceptor, TenantContext, TenantId, tenant_id, per-tenant, admin bypass, TenantContextMiddleware, tenant header, JWT tenant, tenant column, org_id, tenant propagation, workflow_inputs, cross-tenant -->

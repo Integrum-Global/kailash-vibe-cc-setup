@@ -12,53 +12,82 @@ description: "Logistics/supply chain workflows (tracking, routing, delivery). Us
 
 ## Pattern: Shipment Tracking and Delivery
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. Create shipment
-workflow.add_node("DatabaseExecuteNode", "create_shipment", {
-    "query": "INSERT INTO shipments (origin, destination, status) VALUES (?, ?, 'pending')",
-    "parameters": ["{{input.origin}}", "{{input.destination}}"]
-})
+// 1. Create shipment
+builder.add_node("DatabaseExecuteNode", "create_shipment", ValueMap::from([
+    ("query".into(), Value::String(
+        "INSERT INTO shipments (origin, destination, status) VALUES (?, ?, 'pending')".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{input.origin}}".into()),
+        Value::String("{{input.destination}}".into()),
+    ])),
+]));
 
-# 2. Calculate optimal route
-workflow.add_node("APICallNode", "route_optimization", {
-    "url": "https://api.routingengine.com/optimize",
-    "method": "POST",
-    "body": {"origin": "{{input.origin}}", "destination": "{{input.destination}}"}
-})
+// 2. Calculate optimal route
+builder.add_node("HTTPRequestNode", "route_optimization", ValueMap::from([
+    ("url".into(), Value::String("https://api.routingengine.com/optimize".into())),
+    ("method".into(), Value::String("POST".into())),
+    ("body".into(), Value::Object(ValueMap::from([
+        ("origin".into(), Value::String("{{input.origin}}".into())),
+        ("destination".into(), Value::String("{{input.destination}}".into())),
+    ]))),
+]));
 
-# 3. Assign to driver
-workflow.add_node("DatabaseQueryNode", "find_driver", {
-    "query": "SELECT id FROM drivers WHERE status = 'available' AND location_near(?, 50) LIMIT 1",
-    "parameters": ["{{input.origin}}"]
-})
+// 3. Assign to driver
+builder.add_node("DatabaseQueryNode", "find_driver", ValueMap::from([
+    ("query".into(), Value::String(
+        "SELECT id FROM drivers WHERE status = 'available' AND location_near(?, 50) LIMIT 1".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{input.origin}}".into()),
+    ])),
+]));
 
-# 4. Update shipment with route
-workflow.add_node("DatabaseExecuteNode", "update_shipment", {
-    "query": "UPDATE shipments SET driver_id = ?, route = ?, status = 'in_transit' WHERE id = ?",
-    "parameters": ["{{find_driver.id}}", "{{route_optimization.route}}", "{{create_shipment.id}}"]
-})
+// 4. Update shipment with route
+builder.add_node("DatabaseExecuteNode", "update_shipment", ValueMap::from([
+    ("query".into(), Value::String(
+        "UPDATE shipments SET driver_id = ?, route = ?, status = 'in_transit' WHERE id = ?".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{find_driver.id}}".into()),
+        Value::String("{{route_optimization.route}}".into()),
+        Value::String("{{create_shipment.id}}".into()),
+    ])),
+]));
 
-# 5. Real-time tracking
-workflow.add_node("LoopNode", "track_location", {
-    "condition": "{{current_status}} != 'delivered'",
-    "interval": 300  # Check every 5 minutes
-})
+// 5. Real-time tracking loop
+builder.add_node("LoopNode", "track_location", ValueMap::from([
+    ("condition".into(), Value::String("{{current_status}} != 'delivered'".into())),
+    ("interval".into(), Value::Integer(300)), // Check every 5 minutes
+]));
 
-# 6. Update delivery status
-workflow.add_node("DatabaseExecuteNode", "mark_delivered", {
-    "query": "UPDATE shipments SET status = 'delivered', delivered_at = NOW() WHERE id = ?",
-    "parameters": ["{{create_shipment.id}}"]
-})
+// 6. Update delivery status
+builder.add_node("DatabaseExecuteNode", "mark_delivered", ValueMap::from([
+    ("query".into(), Value::String(
+        "UPDATE shipments SET status = 'delivered', delivered_at = NOW() WHERE id = ?".into()
+    )),
+    ("parameters".into(), Value::Array(vec![
+        Value::String("{{create_shipment.id}}".into()),
+    ])),
+]));
 
-workflow.add_connection("create_shipment", "id", "route_optimization", "shipment_id")
-workflow.add_connection("route_optimization", "route", "find_driver", "location")
-workflow.add_connection("find_driver", "id", "update_shipment", "driver_id")
-workflow.add_connection("update_shipment", "status", "track_location", "current_status")
-workflow.add_connection("track_location", "result", "mark_delivered", "trigger")
+builder.connect("create_shipment", "id", "route_optimization", "shipment_id");
+builder.connect("route_optimization", "route", "find_driver", "location");
+builder.connect("find_driver", "id", "update_shipment", "driver_id");
+builder.connect("update_shipment", "status", "track_location", "current_status");
+builder.connect("track_location", "result", "mark_delivered", "trigger");
+
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::new()).await?;
 ```
 
 <!-- Trigger Keywords: logistics workflow, supply chain, shipment tracking, route optimization, delivery -->

@@ -1,6 +1,6 @@
 ---
 name: git-release-patterns
-description: "Git release patterns including pre-commit validation, branch workflows, and release procedures. Use for 'pre-commit', 'release checklist', 'version bump', or 'PR workflow'."
+description: "Git release patterns including pre-commit validation, branch workflows, and release procedures for Rust workspaces. Use for 'pre-commit', 'release checklist', 'version bump', or 'PR workflow'."
 ---
 
 # Git Release Patterns
@@ -8,7 +8,7 @@ description: "Git release patterns including pre-commit validation, branch workf
 > **Skill Metadata**
 > Category: `git`
 > Priority: `HIGH`
-> Tools: git, black, isort, ruff, pytest
+> Tools: git, cargo, clippy, rustfmt, cargo-audit
 
 ## Pre-Commit Validation
 
@@ -16,35 +16,40 @@ description: "Git release patterns including pre-commit validation, branch workf
 
 ```bash
 # Run before EVERY commit
-black .            # Python code formatting
-isort .            # Import sorting
-ruff check .       # Fast Python linting
-pytest             # Run tests
+cargo fmt --all --check          # Rust code formatting
+cargo clippy --workspace -- -D warnings  # Linting (zero warnings)
+cargo test --workspace           # Run tests
+cargo audit                      # Dependency vulnerability check
 
 # All-in-one check
-black . && isort . && ruff check . && pytest && echo "✅ Ready to commit"
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo audit && \
+echo "Ready to commit"
 ```
 
 ### Quality Gate Checklist
 
 ```
-- [ ] black . → No formatting changes needed
-- [ ] isort . → No import sorting changes needed
-- [ ] ruff check . → No linting violations
-- [ ] pytest → All tests pass
+- [ ] cargo fmt --all --check → No formatting changes needed
+- [ ] cargo clippy --workspace -- -D warnings → No lint violations
+- [ ] cargo test --workspace → All tests pass
+- [ ] cargo audit → No known vulnerabilities
 - [ ] git status → All changes staged
 ```
 
 ## FORBIDDEN Git Commands
 
 ```bash
-# ❌ NEVER USE - Destructive operations
+# NEVER USE - Destructive operations
 git reset --hard    # Can lose work
-git reset --soft    # Can lose work
+git push --force    # Can overwrite others' work
 
-# ✅ SAFE ALTERNATIVES
+# SAFE ALTERNATIVES
 git stash          # Temporarily save changes
 git commit         # Commit changes safely
+git revert         # Undo a commit safely
 ```
 
 ## Branch Workflow
@@ -55,73 +60,60 @@ git commit         # Commit changes safely
 # 1. Create Feature Branch (REQUIRED)
 git checkout main
 git pull origin main
-git checkout -b feature/[descriptive-name]
+git checkout -b feat/descriptive-name
 
 # 2. Development Loop
 # Make changes
-black . && isort . && ruff check .  # MANDATORY formatting
-pytest                              # MANDATORY testing
-git add .                          # Stage all changes
-git commit -m "feat: implement [feature description]"
+cargo fmt --all                         # Format code
+cargo clippy --workspace -- -D warnings # Lint
+cargo test --workspace                  # Test
+git add specific-files.rs               # Stage specific files
+git commit -m "feat(core): implement feature description"
 
 # 3. Pre-Push Validation (MANDATORY)
-black . && isort . && ruff check . && pytest
-cd docs && python build_docs.py
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo audit
 ```
 
-### PR Creation (Cannot Push to Main)
+### PR Creation
 
 ```bash
 # Push Feature Branch
-git push -u origin feature/[name]
+git push -u origin feat/descriptive-name
 
-# Title format: [type]: [description]
-# Examples:
-# feat: add user authentication system
-# fix: resolve parameter validation issue
-# docs: update quickstart guide
-```
-
-### PR Description Template
-
-```markdown
+# Create PR with gh CLI
+gh pr create --base main --title "feat(core): add feature" --body "$(cat <<'EOF'
 ## Summary
-[Brief description of changes and why they're needed]
+- What changed and why
 
-## Changes Made
-- [ ] Feature implementation completed
-- [ ] Tests added/updated
-- [ ] Documentation updated
-- [ ] Examples updated (if applicable)
+## Crates Affected
+- `kailash-core`
 
-## Breaking Changes
-- [ ] None
-- [ ] [List any breaking changes with migration guide]
-
-## Ready for Review
-- [ ] Code quality pipeline passes
-- [ ] All tests pass locally
-- [ ] Documentation is complete
+## Test plan
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --workspace -- -D warnings` clean
+- [ ] Manual testing completed
+EOF
+)"
 ```
 
 ## Version Management
 
-### Update ALL Version Locations
+### Update Version in Cargo.toml
 
 ```bash
-# Main SDK
-vim setup.py                    # version="x.y.z"
-vim pyproject.toml              # [project] version = "x.y.z"
+# If using workspace version inheritance:
+# Edit workspace Cargo.toml
+vim Cargo.toml  # [workspace.package] version = "x.y.z"
 
-# Bundled packages
-vim dataflow/setup.py
-vim dataflow/pyproject.toml
-
-vim nexus/setup.py
-vim nexus/pyproject.toml
-
-vim kaizen/setup.py
-vim kaizen/pyproject.toml
+# If per-crate versioning:
+vim crates/kailash-core/Cargo.toml      # version = "x.y.z"
+vim crates/kailash-dataflow/Cargo.toml
+vim crates/kailash-nexus/Cargo.toml
+vim crates/kailash-kaizen/Cargo.toml
+vim crates/kailash-enterprise/Cargo.toml
 ```
 
 ## Release Branch Workflow
@@ -130,26 +122,28 @@ vim kaizen/pyproject.toml
 # 1. Create Release Branch
 git checkout main
 git pull origin main
-git checkout -b release/v[version]
+git checkout -b release/v0.1.0
 
 # 2. Pre-Release Validation
-black . && isort . && ruff check .
-pytest
-cd docs && python build_docs.py
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo audit
 
-# 3. Build and Test Distribution
-rm -rf dist/ build/ *.egg-info
-python -m build
+# 3. Build and Test Release Binary
+cargo build --workspace --release
 
-# Test installation
-python -m venv test-release
-source test-release/bin/activate
-pip install dist/kailash-*.whl
+# 4. Test Python Wheels (if applicable)
+cd bindings/kailash-python && maturin build --release
+pip install target/wheels/kailash_enterprise-*.whl
 python -c "import kailash; print(kailash.__version__)"
-deactivate && rm -rf test-release
 
-# 4. Push Release Branch
-git push -u origin release/v[version]
+# 5. Dry-run crates.io publish
+cargo publish --dry-run -p kailash-value
+cargo publish --dry-run -p kailash-core
+
+# 6. Push Release Branch
+git push -u origin release/v0.1.0
 ```
 
 ## GitHub Release Process
@@ -158,72 +152,68 @@ git push -u origin release/v[version]
 # 1. After PR Merge
 git checkout main
 git pull origin main
-git tag v[version]
-git push origin v[version]
+git tag v0.1.0
+git push origin v0.1.0
 
-# 2. Create GitHub Release
-# Go to: https://github.com/[org]/kailash_python_sdk/releases
-# - Tag: v[version]
-# - Target: main
-# - Title: v[version] - [Brief Description]
-# - Attach: dist/* files
+# 2. Create GitHub Release (triggers CI)
+gh release create v0.1.0 --title "v0.1.0" --notes "Release notes here"
 
-# 3. PyPI Upload (order matters)
-cd ../.. && twine upload dist/*                  # Main SDK last
+# 3. crates.io Publish (dependency order)
+cargo publish -p kailash-value       # Leaf crate first
+cargo publish -p kailash-core        # Then core
+cargo publish -p kailash-macros      # Then macros
+cargo publish -p kailash-nodes       # Then consumers
+# ... etc
+
+# 4. PyPI Upload (via CI or manual)
+cd bindings/kailash-python
+maturin publish --username __token__ --password $PYPI_TOKEN
 ```
 
 ## Validation Tiers
 
 ```bash
-# Quick Check (5 minutes)
-black . && isort . && ruff check .
+# Quick Check (1 minute)
+cargo fmt --all --check && cargo clippy --workspace -- -D warnings
 
-# Standard Check (10 minutes)
-black . && isort . && ruff check . && pytest
+# Standard Check (3 minutes)
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace
 
-# Full Validation (20 minutes)
-black . && isort . && ruff check . && pytest && \
-cd docs && python build_docs.py
+# Full Validation (5 minutes)
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo audit && \
+cargo build --workspace --release
 
-# Release Validation (30 minutes)
-black . && isort . && ruff check . && pytest && \
-cd examples && python _utils/test_all_examples.py && \
-cd docs && python build_docs.py && \
-python -m build && twine check dist/*
+# Release Validation (10 minutes)
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace && \
+cargo test --workspace --features integration && \
+cargo audit && \
+cargo build --workspace --release && \
+cargo publish --dry-run -p kailash-value
 ```
 
 ## Emergency Procedures
 
 ```bash
 # Rollback Release
-git tag -d v[version]                    # Delete local tag
-git push origin :refs/tags/v[version]   # Delete remote tag
+git tag -d v0.1.0                    # Delete local tag
+git push origin :refs/tags/v0.1.0    # Delete remote tag
 
 # Urgent Hotfix
 git checkout main && git pull
-git checkout -b hotfix/[critical-issue]
+git checkout -b hotfix/critical-issue
 # Make minimal fix
-black . && isort . && ruff check . && pytest
-git push -u origin hotfix/[critical-issue]
+cargo fmt --all --check && \
+cargo clippy --workspace -- -D warnings && \
+cargo test --workspace
+git push -u origin hotfix/critical-issue
 # Create PR with "hotfix" label
 ```
 
-## Common Fixes
-
-```bash
-# Black/isort Disagreement
-isort . --profile black
-
-# Ruff Auto-Fix
-ruff check . --fix
-
-# Debugging Tests
-pytest tests/specific/test_file.py -v -s --tb=long
-
-# Uncommitted Changes
-git stash           # Save temporarily
-# Do git operation
-git stash pop       # Restore
-```
-
-<!-- Trigger Keywords: pre-commit, release checklist, version bump, PR workflow, git branching, feature branch, release branch, PyPI release -->
+<!-- Trigger Keywords: pre-commit, release checklist, version bump, PR workflow, git branching, feature branch, release branch, crates.io publish, cargo publish -->

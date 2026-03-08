@@ -215,7 +215,7 @@ workflow.add_connection("check_done", "output", "output", "input")  # Exit
 # Build and execute
 workflow_def = workflow.build()
 runtime = LocalRuntime()
-results, run_id = runtime.execute(workflow_def, parameters={
+results, run_id = runtime.execute(workflow_def, inputs={
     "input": {"input_value": 27}
 })
 ```

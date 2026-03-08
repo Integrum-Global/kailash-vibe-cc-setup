@@ -62,6 +62,9 @@ gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```bash
 # Standard Python package
 python -m build
+
+# Rust-backed package (maturin)
+maturin build --release
 ```
 
 ### Upload

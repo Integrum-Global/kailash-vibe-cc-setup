@@ -17,6 +17,7 @@ Comprehensive patterns for Extract, Transform, Load workflows.
 ## Quick Reference
 
 ETL patterns enable:
+
 - **Data extraction** - CSV, JSON, databases, APIs
 - **Transformation** - Clean, normalize, enrich, aggregate
 - **Loading** - Write to databases, files, APIs
@@ -24,274 +25,332 @@ ETL patterns enable:
 
 ## Pattern 1: CSV to Database ETL
 
-```python
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
+```rust
+use kailash_core::{WorkflowBuilder, Runtime, RuntimeConfig, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-workflow = WorkflowBuilder()
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 1. EXTRACT: Read CSV
-workflow.add_node("CSVReaderNode", "extract", {
-    "file_path": "data/customers.csv",
-    "delimiter": ",",
-    "encoding": "utf-8"
-})
+// 1. EXTRACT: Read CSV
+builder.add_node("CSVReaderNode", "extract", ValueMap::from([
+    ("file_path".into(), Value::String("data/customers.csv".into())),
+    ("delimiter".into(), Value::String(",".into())),
+    ("encoding".into(), Value::String("utf-8".into())),
+]));
 
-# 2. TRANSFORM: Validate data
-workflow.add_node("DataValidationNode", "validate", {
-    "input": "{{extract.data}}",
-    "schema": {
-        "email": "email",
-        "age": "integer",
-        "name": "string"
-    },
-    "on_error": "collect"  # Collect invalid rows
-})
+// 2. TRANSFORM: Validate data
+builder.add_node("DataValidationNode", "validate", ValueMap::from([
+    ("input".into(), Value::String("{{extract.data}}".into())),
+    ("schema".into(), Value::Object(ValueMap::from([
+        ("email".into(), Value::String("email".into())),
+        ("age".into(), Value::String("integer".into())),
+        ("name".into(), Value::String("string".into())),
+    ]))),
+    ("on_error".into(), Value::String("collect".into())), // Collect invalid rows
+]));
 
-# 3. TRANSFORM: Clean data
-workflow.add_node("TransformNode", "clean", {
-    "input": "{{validate.valid_data}}",
-    "transformations": [
-        {"field": "email", "operation": "lowercase"},
-        {"field": "name", "operation": "trim"},
-        {"field": "phone", "operation": "normalize_phone"}
-    ]
-})
+// 3. TRANSFORM: Clean data
+builder.add_node("TransformNode", "clean", ValueMap::from([
+    ("input".into(), Value::String("{{validate.valid_data}}".into())),
+    ("transformations".into(), Value::Array(vec![
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("email".into())),
+            ("operation".into(), Value::String("lowercase".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("name".into())),
+            ("operation".into(), Value::String("trim".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("phone".into())),
+            ("operation".into(), Value::String("normalize_phone".into())),
+        ])),
+    ])),
+]));
 
-# 4. TRANSFORM: Enrich data
-workflow.add_node("APICallNode", "enrich_location", {
-    "url": "https://api.example.com/geocode",
-    "method": "POST",
-    "body": "{{clean.data}}"
-})
+// 4. TRANSFORM: Enrich data
+builder.add_node("HTTPRequestNode", "enrich_location", ValueMap::from([
+    ("url".into(), Value::String("https://api.example.com/geocode".into())),
+    ("method".into(), Value::String("POST".into())),
+    ("body".into(), Value::String("{{clean.data}}".into())),
+]));
 
-# 5. LOAD: Insert to database
-workflow.add_node("DatabaseExecuteNode", "load", {
-    "query": """
-        INSERT INTO customers (name, email, age, location)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT (email) DO UPDATE SET
-            name = EXCLUDED.name,
-            age = EXCLUDED.age,
-            location = EXCLUDED.location
-    """,
-    "parameters": "{{enrich_location.enriched_data}}"
-})
+// 5. LOAD: Insert to database
+builder.add_node("DatabaseExecuteNode", "load", ValueMap::from([
+    ("query".into(), Value::String(
+        "INSERT INTO customers (name, email, age, location) \
+         VALUES (?, ?, ?, ?) \
+         ON CONFLICT (email) DO UPDATE SET \
+         name = EXCLUDED.name, age = EXCLUDED.age, location = EXCLUDED.location".into()
+    )),
+    ("parameters".into(), Value::String("{{enrich_location.enriched_data}}".into())),
+]));
 
-# 6. Error handling: Log invalid rows
-workflow.add_node("CSVWriterNode", "log_errors", {
-    "file_path": "logs/invalid_rows.csv",
-    "data": "{{validate.invalid_data}}",
-    "headers": ["row", "error", "data"]
-})
+// 6. Error handling: Log invalid rows
+builder.add_node("CSVWriterNode", "log_errors", ValueMap::from([
+    ("file_path".into(), Value::String("logs/invalid_rows.csv".into())),
+    ("data".into(), Value::String("{{validate.invalid_data}}".into())),
+    ("headers".into(), Value::Array(vec![
+        Value::String("row".into()),
+        Value::String("error".into()),
+        Value::String("data".into()),
+    ])),
+]));
 
-# Connect nodes
-workflow.add_connection("extract", "data", "validate", "input")
-workflow.add_connection("validate", "valid_data", "clean", "input")
-workflow.add_connection("clean", "data", "enrich_location", "body")
-workflow.add_connection("enrich_location", "enriched_data", "load", "parameters")
-workflow.add_connection("validate", "invalid_data", "log_errors", "data")
+// Connect nodes
+builder.connect("extract", "data", "validate", "input");
+builder.connect("validate", "valid_data", "clean", "input");
+builder.connect("clean", "data", "enrich_location", "body");
+builder.connect("enrich_location", "enriched_data", "load", "parameters");
+builder.connect("validate", "invalid_data", "log_errors", "data");
 
-with LocalRuntime() as runtime:
-    results, run_id = runtime.execute(workflow.build())
+let workflow = builder.build(&registry)?;
+let runtime = Runtime::new(RuntimeConfig::default(), registry);
+let result = runtime.execute(&workflow, ValueMap::new()).await?;
 ```
 
 ## Pattern 2: API to Database ETL
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. EXTRACT: Paginated API
-workflow.add_node("SetVariableNode", "init_page", {
-    "page": 1,
-    "has_more": True
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-workflow.add_node("APICallNode", "extract_api", {
-    "url": "https://api.example.com/users?page={{init_page.page}}",
-    "method": "GET",
-    "headers": {"Authorization": "Bearer {{secrets.api_token}}"}
-})
+// 1. EXTRACT: Paginated API
+builder.add_node("SetVariableNode", "init_page", ValueMap::from([
+    ("page".into(), Value::Integer(1)),
+    ("has_more".into(), Value::Bool(true)),
+]));
 
-# 2. TRANSFORM: Normalize API response
-workflow.add_node("TransformNode", "normalize", {
-    "input": "{{extract_api.data}}",
-    "mapping": {
-        "user_id": "id",
-        "full_name": "name",
-        "email_address": "email",
-        "created_at": "timestamp|iso8601"
-    }
-})
+builder.add_node("HTTPRequestNode", "extract_api", ValueMap::from([
+    ("url".into(), Value::String("https://api.example.com/users?page={{init_page.page}}".into())),
+    ("method".into(), Value::String("GET".into())),
+    ("headers".into(), Value::Object(ValueMap::from([
+        ("Authorization".into(), Value::String(
+            format!("Bearer {}", std::env::var("API_TOKEN").expect("API_TOKEN in .env")).into()
+        )),
+    ]))),
+]));
 
-# 3. TRANSFORM: Filter records
-workflow.add_node("FilterNode", "filter_active", {
-    "input": "{{normalize.data}}",
-    "condition": "status == 'active' AND created_at > '2024-01-01'"
-})
+// 2. TRANSFORM: Normalize API response
+builder.add_node("TransformNode", "normalize", ValueMap::from([
+    ("input".into(), Value::String("{{extract_api.data}}".into())),
+    ("mapping".into(), Value::Object(ValueMap::from([
+        ("user_id".into(), Value::String("id".into())),
+        ("full_name".into(), Value::String("name".into())),
+        ("email_address".into(), Value::String("email".into())),
+        ("created_at".into(), Value::String("timestamp|iso8601".into())),
+    ]))),
+]));
 
-# 4. LOAD: Batch insert
-workflow.add_node("DatabaseExecuteNode", "load_batch", {
-    "query": """
-        INSERT INTO users (user_id, full_name, email_address, created_at)
-        VALUES (?, ?, ?, ?)
-    """,
-    "batch": True,
-    "batch_size": 100,
-    "parameters": "{{filter_active.filtered_data}}"
-})
+// 3. TRANSFORM: Filter records
+builder.add_node("FilterNode", "filter_active", ValueMap::from([
+    ("input".into(), Value::String("{{normalize.data}}".into())),
+    ("condition".into(), Value::String("status == 'active' AND created_at > '2024-01-01'".into())),
+]));
 
-# 5. Check for more pages
-workflow.add_node("ConditionalNode", "check_more", {
-    "condition": "{{extract_api.has_next_page}} == true",
-    "true_branch": "next_page",
-    "false_branch": "complete"
-})
+// 4. LOAD: Batch insert
+builder.add_node("DatabaseExecuteNode", "load_batch", ValueMap::from([
+    ("query".into(), Value::String(
+        "INSERT INTO users (user_id, full_name, email_address, created_at) VALUES (?, ?, ?, ?)".into()
+    )),
+    ("batch".into(), Value::Bool(true)),
+    ("batch_size".into(), Value::Integer(100)),
+    ("parameters".into(), Value::String("{{filter_active.filtered_data}}".into())),
+]));
 
-# 6. Increment page
-workflow.add_node("TransformNode", "next_page", {
-    "input": "{{init_page.page}}",
-    "transformation": "value + 1"
-})
+// 5. Check for more pages
+builder.add_node("ConditionalNode", "check_more", ValueMap::from([
+    ("condition".into(), Value::String("{{extract_api.has_next_page}} == true".into())),
+    ("true_branch".into(), Value::String("next_page".into())),
+    ("false_branch".into(), Value::String("complete".into())),
+]));
 
-# Loop for pagination
-workflow.add_connection("init_page", "page", "extract_api", "page")
-workflow.add_connection("extract_api", "data", "normalize", "input")
-workflow.add_connection("normalize", "data", "filter_active", "input")
-workflow.add_connection("filter_active", "filtered_data", "load_batch", "parameters")
-workflow.add_connection("load_batch", "result", "check_more", "input")
-workflow.add_connection("check_more", "output_true", "next_page", "input")
-workflow.add_connection("next_page", "result", "extract_api", "page")  # Loop!
+// 6. Increment page
+builder.add_node("TransformNode", "next_page", ValueMap::from([
+    ("input".into(), Value::String("{{init_page.page}}".into())),
+    ("transformation".into(), Value::String("value + 1".into())),
+]));
+
+// Loop for pagination
+builder.connect("init_page", "page", "extract_api", "page");
+builder.connect("extract_api", "data", "normalize", "input");
+builder.connect("normalize", "data", "filter_active", "input");
+builder.connect("filter_active", "filtered_data", "load_batch", "parameters");
+builder.connect("load_batch", "result", "check_more", "input");
+builder.connect("check_more", "output_true", "next_page", "input");
+builder.connect("next_page", "result", "extract_api", "page"); // Loop!
 ```
 
 ## Pattern 3: Database to Database Migration
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. EXTRACT: Read from source DB
-workflow.add_node("DatabaseQueryNode", "extract_source", {
-    "connection": "source_db",
-    "query": """
-        SELECT id, name, email, created_at
-        FROM legacy_users
-        WHERE migrated = FALSE
-        LIMIT 1000
-    """
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. TRANSFORM: Data mapping
-workflow.add_node("TransformNode", "transform_schema", {
-    "input": "{{extract_source.results}}",
-    "transformations": [
-        {"source": "id", "target": "legacy_id", "type": "string"},
-        {"source": "name", "target": "full_name", "type": "string"},
-        {"source": "email", "target": "email_address", "type": "lowercase"},
-        {"source": "created_at", "target": "registration_date", "type": "datetime"}
-    ]
-})
+// 1. EXTRACT: Read from source DB
+builder.add_node("DatabaseQueryNode", "extract_source", ValueMap::from([
+    ("connection".into(), Value::String("source_db".into())),
+    ("query".into(), Value::String(
+        "SELECT id, name, email, created_at FROM legacy_users WHERE migrated = FALSE LIMIT 1000".into()
+    )),
+]));
 
-# 3. TRANSFORM: Validate business rules
-workflow.add_node("DataValidationNode", "validate_rules", {
-    "input": "{{transform_schema.data}}",
-    "rules": [
-        {"field": "email_address", "validation": "email_format"},
-        {"field": "full_name", "validation": "not_empty"},
-        {"field": "registration_date", "validation": "valid_date"}
-    ]
-})
+// 2. TRANSFORM: Data mapping
+builder.add_node("TransformNode", "transform_schema", ValueMap::from([
+    ("input".into(), Value::String("{{extract_source.results}}".into())),
+    ("transformations".into(), Value::Array(vec![
+        Value::Object(ValueMap::from([
+            ("source".into(), Value::String("id".into())),
+            ("target".into(), Value::String("legacy_id".into())),
+            ("type".into(), Value::String("string".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("source".into(), Value::String("name".into())),
+            ("target".into(), Value::String("full_name".into())),
+            ("type".into(), Value::String("string".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("source".into(), Value::String("email".into())),
+            ("target".into(), Value::String("email_address".into())),
+            ("type".into(), Value::String("lowercase".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("source".into(), Value::String("created_at".into())),
+            ("target".into(), Value::String("registration_date".into())),
+            ("type".into(), Value::String("datetime".into())),
+        ])),
+    ])),
+]));
 
-# 4. LOAD: Insert to target DB
-workflow.add_node("DatabaseExecuteNode", "load_target", {
-    "connection": "target_db",
-    "query": """
-        INSERT INTO users (legacy_id, full_name, email_address, registration_date)
-        VALUES (?, ?, ?, ?)
-    """,
-    "batch": True,
-    "parameters": "{{validate_rules.valid_data}}"
-})
+// 3. TRANSFORM: Validate business rules
+builder.add_node("DataValidationNode", "validate_rules", ValueMap::from([
+    ("input".into(), Value::String("{{transform_schema.data}}".into())),
+    ("rules".into(), Value::Array(vec![
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("email_address".into())),
+            ("validation".into(), Value::String("email_format".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("full_name".into())),
+            ("validation".into(), Value::String("not_empty".into())),
+        ])),
+        Value::Object(ValueMap::from([
+            ("field".into(), Value::String("registration_date".into())),
+            ("validation".into(), Value::String("valid_date".into())),
+        ])),
+    ])),
+]));
 
-# 5. Update source DB (mark as migrated)
-workflow.add_node("DatabaseExecuteNode", "mark_migrated", {
-    "connection": "source_db",
-    "query": """
-        UPDATE legacy_users
-        SET migrated = TRUE, migrated_at = NOW()
-        WHERE id IN ({{load_target.inserted_ids}})
-    """
-})
+// 4. LOAD: Insert to target DB
+builder.add_node("DatabaseExecuteNode", "load_target", ValueMap::from([
+    ("connection".into(), Value::String("target_db".into())),
+    ("query".into(), Value::String(
+        "INSERT INTO users (legacy_id, full_name, email_address, registration_date) VALUES (?, ?, ?, ?)".into()
+    )),
+    ("batch".into(), Value::Bool(true)),
+    ("parameters".into(), Value::String("{{validate_rules.valid_data}}".into())),
+]));
 
-# 6. Handle failures
-workflow.add_node("DatabaseExecuteNode", "log_failures", {
-    "connection": "source_db",
-    "query": """
-        INSERT INTO migration_failures (legacy_id, error, data)
-        VALUES (?, ?, ?)
-    """,
-    "parameters": "{{validate_rules.invalid_data}}"
-})
+// 5. Update source DB (mark as migrated)
+builder.add_node("DatabaseExecuteNode", "mark_migrated", ValueMap::from([
+    ("connection".into(), Value::String("source_db".into())),
+    ("query".into(), Value::String(
+        "UPDATE legacy_users SET migrated = TRUE, migrated_at = NOW() WHERE id IN ({{load_target.inserted_ids}})".into()
+    )),
+]));
 
-workflow.add_connection("extract_source", "results", "transform_schema", "input")
-workflow.add_connection("transform_schema", "data", "validate_rules", "input")
-workflow.add_connection("validate_rules", "valid_data", "load_target", "parameters")
-workflow.add_connection("load_target", "inserted_ids", "mark_migrated", "ids")
-workflow.add_connection("validate_rules", "invalid_data", "log_failures", "parameters")
+// 6. Handle failures
+builder.add_node("DatabaseExecuteNode", "log_failures", ValueMap::from([
+    ("connection".into(), Value::String("source_db".into())),
+    ("query".into(), Value::String(
+        "INSERT INTO migration_failures (legacy_id, error, data) VALUES (?, ?, ?)".into()
+    )),
+    ("parameters".into(), Value::String("{{validate_rules.invalid_data}}".into())),
+]));
+
+builder.connect("extract_source", "results", "transform_schema", "input");
+builder.connect("transform_schema", "data", "validate_rules", "input");
+builder.connect("validate_rules", "valid_data", "load_target", "parameters");
+builder.connect("load_target", "inserted_ids", "mark_migrated", "ids");
+builder.connect("validate_rules", "invalid_data", "log_failures", "parameters");
 ```
 
 ## Pattern 4: Real-Time Streaming ETL
 
-```python
-workflow = WorkflowBuilder()
+```rust
+use kailash_core::{WorkflowBuilder, NodeRegistry};
+use kailash_core::value::{Value, ValueMap};
+use std::sync::Arc;
 
-# 1. EXTRACT: Stream from message queue
-workflow.add_node("MessageQueueConsumerNode", "extract_stream", {
-    "queue_url": "kafka://localhost:9092/events",
-    "topic": "user_events",
-    "batch_size": 50
-})
+let registry = Arc::new(NodeRegistry::default());
+let mut builder = WorkflowBuilder::new();
 
-# 2. TRANSFORM: Parse events
-workflow.add_node("TransformNode", "parse_events", {
-    "input": "{{extract_stream.messages}}",
-    "parsing": {
-        "format": "json",
-        "flatten": True,
-        "extract_fields": ["user_id", "event_type", "timestamp", "data"]
-    }
-})
+// 1. EXTRACT: Stream from message queue
+builder.add_node("MessageQueueConsumerNode", "extract_stream", ValueMap::from([
+    ("queue_url".into(), Value::String("kafka://localhost:9092/events".into())),
+    ("topic".into(), Value::String("user_events".into())),
+    ("batch_size".into(), Value::Integer(50)),
+]));
 
-# 3. TRANSFORM: Aggregate metrics
-workflow.add_node("AggregateNode", "calculate_metrics", {
-    "input": "{{parse_events.events}}",
-    "group_by": ["user_id", "event_type"],
-    "aggregations": {
-        "count": "COUNT(*)",
-        "avg_duration": "AVG(data.duration)",
-        "last_seen": "MAX(timestamp)"
-    },
-    "window": "5m"  # 5-minute window
-})
+// 2. TRANSFORM: Parse events
+builder.add_node("TransformNode", "parse_events", ValueMap::from([
+    ("input".into(), Value::String("{{extract_stream.messages}}".into())),
+    ("parsing".into(), Value::Object(ValueMap::from([
+        ("format".into(), Value::String("json".into())),
+        ("flatten".into(), Value::Bool(true)),
+        ("extract_fields".into(), Value::Array(vec![
+            Value::String("user_id".into()),
+            Value::String("event_type".into()),
+            Value::String("timestamp".into()),
+            Value::String("data".into()),
+        ])),
+    ]))),
+]));
 
-# 4. LOAD: Write to time-series DB
-workflow.add_node("DatabaseExecuteNode", "load_metrics", {
-    "connection": "timescaledb",
-    "query": """
-        INSERT INTO user_metrics (user_id, event_type, count, avg_duration, last_seen, window_start)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """,
-    "parameters": "{{calculate_metrics.aggregated}}"
-})
+// 3. TRANSFORM: Aggregate metrics
+builder.add_node("AggregateNode", "calculate_metrics", ValueMap::from([
+    ("input".into(), Value::String("{{parse_events.events}}".into())),
+    ("group_by".into(), Value::Array(vec![
+        Value::String("user_id".into()),
+        Value::String("event_type".into()),
+    ])),
+    ("aggregations".into(), Value::Object(ValueMap::from([
+        ("count".into(), Value::String("COUNT(*)".into())),
+        ("avg_duration".into(), Value::String("AVG(data.duration)".into())),
+        ("last_seen".into(), Value::String("MAX(timestamp)".into())),
+    ]))),
+    ("window".into(), Value::String("5m".into())), // 5-minute window
+]));
 
-# 5. Acknowledge messages
-workflow.add_node("MessageQueueAckNode", "ack_messages", {
-    "message_ids": "{{extract_stream.message_ids}}"
-})
+// 4. LOAD: Write to time-series DB
+builder.add_node("DatabaseExecuteNode", "load_metrics", ValueMap::from([
+    ("connection".into(), Value::String("timescaledb".into())),
+    ("query".into(), Value::String(
+        "INSERT INTO user_metrics (user_id, event_type, count, avg_duration, last_seen, window_start) \
+         VALUES (?, ?, ?, ?, ?, ?)".into()
+    )),
+    ("parameters".into(), Value::String("{{calculate_metrics.aggregated}}".into())),
+]));
 
-workflow.add_connection("extract_stream", "messages", "parse_events", "input")
-workflow.add_connection("parse_events", "events", "calculate_metrics", "input")
-workflow.add_connection("calculate_metrics", "aggregated", "load_metrics", "parameters")
-workflow.add_connection("load_metrics", "result", "ack_messages", "message_ids")
+// 5. Acknowledge messages
+builder.add_node("MessageQueueAckNode", "ack_messages", ValueMap::from([
+    ("message_ids".into(), Value::String("{{extract_stream.message_ids}}".into())),
+]));
+
+builder.connect("extract_stream", "messages", "parse_events", "input");
+builder.connect("parse_events", "events", "calculate_metrics", "input");
+builder.connect("calculate_metrics", "aggregated", "load_metrics", "parameters");
+builder.connect("load_metrics", "result", "ack_messages", "message_ids");
 ```
 
 ## Best Practices
@@ -317,8 +376,5 @@ workflow.add_connection("load_metrics", "result", "ack_messages", "message_ids")
 - **DataFlow Framework**: [`dataflow-specialist`](../../02-dataflow/dataflow-specialist.md)
 - **Data Patterns**: [`workflow-pattern-data`](workflow-pattern-data.md)
 - **Database Nodes**: [`nodes-database-reference`](../nodes/nodes-database-reference.md)
-
-## Documentation
-
 
 <!-- Trigger Keywords: ETL, data pipeline, extract transform load, data migration, data integration, batch processing -->

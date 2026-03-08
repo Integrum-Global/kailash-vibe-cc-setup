@@ -70,6 +70,7 @@ const { data, isLoading, error } = useQuery({
 ```dart
 import 'package:http/http.dart' as http;
 
+// Call Kailash workflow
 Future<Map<String, dynamic>> executeWorkflow(String workflowId, Map<String, dynamic> input) async {
   final response = await http.post(
     Uri.parse('$baseUrl/api/workflow/$workflowId'),
@@ -77,33 +78,6 @@ Future<Map<String, dynamic>> executeWorkflow(String workflowId, Map<String, dyna
   );
   return jsonDecode(response.body);
 }
-```
-
-### Backend API (Python)
-
-```python
-from kailash_nexus import Nexus
-from kailash.workflow.builder import WorkflowBuilder
-from kailash.runtime import LocalRuntime
-import os
-
-workflow = WorkflowBuilder()
-workflow.add_node("LLMNode", "chat", {
-    "provider": "openai",
-    "model": os.environ.get("DEFAULT_LLM_MODEL", "gpt-5"),
-    "prompt": "{{input.message}}",
-})
-built = workflow.build()
-
-app = Nexus(preset="standard")
-
-@app.route("/execute", methods=["POST"])
-def execute(message: str):
-    runtime = LocalRuntime()
-    results, run_id = runtime.execute(built, {"message": message})
-    return results["chat"]
-
-app.serve(port=3000)
 ```
 
 ## Architecture Patterns
@@ -130,49 +104,61 @@ app.serve(port=3000)
 
 ```
 Frontend (React/Flutter)
-    |
+    ↓
 Nexus API (Port 3000)
-    |
+    ↓
 Kailash Workflows
-    |
+    ↓
 DataFlow (Database)
-    |
+    ↓
 PostgreSQL/SQLite
 ```
+
+## When to Use This Skill
+
+Use this skill when you need to:
+
+- Integrate React with Kailash workflows
+- Build Flutter apps with Kailash backend
+- Set up API clients for Kailash
+- Implement frontend state management
+- Handle errors in frontend applications
+- Configure real-time updates
+- Generate TypeScript/Dart types
 
 ## Best Practices
 
 ### API Integration
 
-- Use Nexus for auto-generated APIs
-- Implement proper error handling
-- Use type-safe clients (TypeScript/Dart)
-- Cache responses appropriately
-- Handle loading and error states
-- NEVER expose API keys in frontend code
-- NEVER skip input validation
+- ✅ Use Nexus for auto-generated APIs
+- ✅ Implement proper error handling
+- ✅ Use type-safe clients (TypeScript/Dart)
+- ✅ Cache responses appropriately
+- ✅ Handle loading and error states
+- ❌ NEVER expose API keys in frontend code
+- ❌ NEVER skip input validation
 
 ### State Management
 
-- Use React Query for server state (React)
-- Use Riverpod/Bloc for app state (Flutter)
-- Implement optimistic updates
-- Handle offline scenarios
-- NEVER store sensitive data in client state
+- ✅ Use React Query for server state (React)
+- ✅ Use Riverpod/Bloc for app state (Flutter)
+- ✅ Implement optimistic updates
+- ✅ Handle offline scenarios
+- ❌ NEVER store sensitive data in client state
 
 ### Performance
 
-- Implement pagination for large datasets
-- Use debouncing for search/filter
-- Cache API responses
-- Lazy load components
-- NEVER fetch all data at once
+- ✅ Implement pagination for large datasets
+- ✅ Use debouncing for search/filter
+- ✅ Cache API responses
+- ✅ Lazy load components
+- ❌ NEVER fetch all data at once
 
 ## Related Skills
 
-- **[03-nexus](../03-nexus/SKILL.md)** - Nexus API deployment
-- **[02-dataflow](../02-dataflow/SKILL.md)** - Database backend
-- **[01-core-sdk](../01-core-sdk/SKILL.md)** - Workflow creation
+- **[03-nexus](../../03-nexus/SKILL.md)** - Nexus API deployment
+- **[02-dataflow](../../02-dataflow/SKILL.md)** - Database backend
+- **[01-core-sdk](../../01-core-sdk/SKILL.md)** - Workflow creation
 
 ## Support
 

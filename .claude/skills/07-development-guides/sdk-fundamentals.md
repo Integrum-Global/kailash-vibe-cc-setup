@@ -104,7 +104,7 @@ metrics = runtime.get_validation_metrics()  # LocalRuntime
 
 ### 5. Parameter Passing
 - Static parameters: Set in `add_node()` call
-- Dynamic parameters: Pass in `runtime.execute(workflow, parameters={})`
+- Dynamic parameters: Pass in `runtime.execute(workflow, inputs={})`
 - Input connections: Connect outputs to inputs via `add_connection()`
 
 ### 6. Common Mistakes to Avoid
