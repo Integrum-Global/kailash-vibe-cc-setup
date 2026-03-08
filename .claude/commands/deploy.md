@@ -17,6 +17,9 @@ Run the deployment onboarding process:
    - What build system? (setuptools, hatch, poetry)
    - Existing deployment artifacts? (Dockerfile, docker-compose, k8s manifests, terraform, CI workflows)
    - What services does it depend on? (databases, caches, queues, external APIs)
+   - What Kailash frameworks are used? (DataFlow, Nexus, Kaizen, MCP, Enterprise)
+   - What database backends does DataFlow use? (check model definitions for `DataFlowModel`, `FieldDef`)
+   - Does the app use Nexus? (check for `NexusPlatform`, workflow registration, multi-channel endpoints)
 
 2. **Ask the human**
    - Release track: package release, cloud deployment, or both?
@@ -27,6 +30,11 @@ Run the deployment onboarding process:
    - Networking: domain name, SSL, CDN
    - Monitoring: preferred tools, alerting targets
    - Security: WAF, vulnerability scanning, secrets management
+   - **Kailash-specific (if applicable)**:
+     - If DataFlow: Database provider preference? (managed PostgreSQL, self-hosted MySQL, SQLite for dev only, MongoDB)
+     - If Nexus: API domain? Reverse proxy preference (nginx, Caddy, cloud ALB)? CORS configuration?
+     - If Kaizen: LLM provider? (OpenAI, Anthropic, Ollama for local) GPU/ML inference requirements?
+     - If Enterprise: RBAC/ABAC storage backend? Audit log retention policy?
 
 3. **Research current best practices**
    - Use web search for current provider-specific guidance

@@ -64,7 +64,28 @@ Production secrets MUST use the cloud provider's secrets management service, not
 
 Every project that deploys MUST have `deploy/deployment-config.md` at the project root. Run `/deploy` to create it via the onboarding process.
 
-### 6. Research Before Executing
+### 6. AsyncLocalRuntime for Containers
+
+Kailash applications deployed in Docker or any container environment MUST use `AsyncLocalRuntime`. Never use `LocalRuntime` in containers — it causes event loop hangs.
+
+**Correct**:
+
+```python
+from kailash import AsyncLocalRuntime
+rt = AsyncLocalRuntime(reg)
+```
+
+**Incorrect**:
+
+```
+❌ from kailash import LocalRuntime  # hangs in Docker
+❌ rt = LocalRuntime(reg)            # hangs in Docker
+```
+
+**Enforced by**: deployment-specialist agent, code review
+**Violation**: BLOCK deployment
+
+### 7. Research Before Executing
 
 Cloud provider CLIs and services change frequently. MUST verify current syntax via web search or `--help` before running deployment commands. Do NOT rely on memorized commands that may be outdated.
 

@@ -125,6 +125,70 @@ HEALTHCHECK --interval=30s --timeout=3s \
 CMD ["python", "-m", "app.main"]
 ```
 
+#### Kailash Application Variant (DataFlow + Nexus)
+
+For apps using Kailash frameworks, use this variant which handles async runtime and health checks:
+
+```dockerfile
+# Kailash app with DataFlow + Nexus
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+
+# Non-root user
+RUN useradd -r appuser
+USER appuser
+
+# IMPORTANT: Use AsyncLocalRuntime for Docker (never LocalRuntime — causes hangs)
+ENV RUNTIME_TYPE=async
+
+# Nexus provides built-in /health — wire it to Docker health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+CMD ["python", "-m", "app.main"]
+```
+
+#### Docker Compose with DataFlow (Database Service)
+
+When DataFlow is in use, the app needs a database service:
+
+```yaml
+# docker-compose.yml
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://app:${DB_PASSWORD}@db:5432/app
+      RUNTIME_TYPE: async
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+volumes:
+  pgdata:
+```
+
 Essential `.dockerignore`:
 
 ```
