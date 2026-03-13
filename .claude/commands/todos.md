@@ -47,6 +47,11 @@ Reference plans in `workspaces/<project>/02-plans/` and work through every singl
 - Do NOT prioritize or filter — write EVERY task required to complete the full project
 - Cover backend, frontend, testing, deployment, documentation — everything
 - Each todo should be detailed enough to implement independently
+- Each todo should specify:
+  - **What**: The specific deliverable
+  - **Where**: The file path(s) for output
+  - **Evidence type**: What completion evidence is needed (see `/implement` completion evidence)
+  - **Dependencies**: Which other todos must complete first
 - If the plans reference it, there must be a todo for it
 - For large projects (20+ todos), organize into numbered milestones/groups for clarity
 
