@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Security vulnerability specialist. Use proactively before commits and for security-sensitive code changes.
-tools: Read, Grep, Glob
+tools: Read, Write, Grep, Glob
 model: opus
 ---
 
