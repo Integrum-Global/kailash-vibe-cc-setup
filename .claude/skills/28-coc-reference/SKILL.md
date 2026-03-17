@@ -31,6 +31,15 @@ COC is a new term introduced in the thesis paper. It names an architecture that 
 
 **The root cause is not model capability. It is the absence of institutional knowledge surrounding the model.**
 
+### Regression Testing as a Fault Line Defense
+
+Regression testing directly addresses two of the three fault lines:
+
+- **Amnesia**: Without regression tests, the team forgets past bugs and re-introduces them. A regression test is an anti-amnesia artifact — it persists the knowledge of a specific failure across all future sessions and developers.
+- **Security Blindness**: Without regression tests, the "shortest path" fix skips verification. The fix gets code-reviewed but never executed against the original reproduction steps. Regression tests force the verification path.
+
+This is why regression testing is Tier 0 in the Kailash testing strategy — it runs before unit tests, and a bug fix without a regression test is not considered a fix.
+
 ## The Value Hierarchy Inversion
 
 ```

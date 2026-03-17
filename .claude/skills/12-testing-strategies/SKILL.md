@@ -10,8 +10,9 @@ Comprehensive testing approach for Kailash applications using the 3-tier testing
 ## Overview
 
 Kailash testing philosophy:
-- **3-Tier Strategy**: Unit, Integration, End-to-End
-- **real infrastructure preferred Policy**: Tiers 2-3 use real infrastructure
+- **4-Tier Strategy**: Regression, Unit, Integration, End-to-End
+- **Regression-First**: Every bug fix starts with a failing regression test
+- **Real Infrastructure Preferred**: Tiers 2-3 use real infrastructure
 - **Real Database Testing**: Actual PostgreSQL/SQLite
 - **Real API Testing**: Live HTTP calls
 - **Real LLM Testing**: Actual model calls (with caching)
@@ -19,7 +20,8 @@ Kailash testing philosophy:
 ## Reference Documentation
 
 ### Core Strategy
-- **[test-3tier-strategy](test-3tier-strategy.md)** - Complete 3-tier testing guide
+- **[test-3tier-strategy](test-3tier-strategy.md)** - Complete testing guide
+  - Tier 0: Regression Tests (reproduce known bugs, permanent guards)
   - Tier 1: Unit Tests (mocking allowed)
   - Tier 2: Integration Tests (real infrastructure preferred)
   - Tier 3: End-to-End Tests (real infrastructure preferred)
@@ -27,7 +29,37 @@ Kailash testing philosophy:
   - Fixture patterns
   - CI/CD integration
 
-## 3-Tier Testing Strategy
+## 4-Tier Testing Strategy
+
+### Tier 0: Regression Tests
+
+**Scope**: Reproduce known bugs, permanent guards against re-introduction
+**Mocking**: Depends on bug scope (Tier 1 rules for unit bugs, Tier 2 rules for integration bugs)
+**Speed**: Varies
+**Lifetime**: PERMANENT — regression tests are never deleted
+
+Every bug fix MUST start with a failing regression test that reproduces the exact bug from the issue tracker. The test MUST fail before the fix and pass after.
+
+```python
+# tests/regression/test_issue_42.py
+
+def test_issue_42_user_creation_preserves_explicit_id():
+    """Regression: #42 — CreateUser silently drops explicit id.
+
+    The bug: when auto_increment is enabled on the model, passing an
+    explicit id value was silently ignored.
+    Fixed in: commit abc1234
+    """
+    # Reproduce the exact bug from the issue
+    # ...
+    assert result["id"] == "custom-id-value"
+```
+
+**Why Tier 0 exists:** Without regression tests, teams forget past bugs and re-introduce them (the Amnesia fault line). Without regression tests, the "shortest path" fix skips verification (the Security Blindness fault line). Regression tests are the cheapest insurance against known bugs.
+
+**Naming convention:**
+- File: `tests/regression/test_issue_{number}.py`
+- Function: `test_issue_{number}_{short_description}`
 
 ### Tier 1: Unit Tests
 **Scope**: Individual functions and classes
@@ -109,6 +141,8 @@ def test_user_registration_flow(nexus: Nexus):
 ### Directory Structure
 ```
 tests/
+  regression/
+    test_issue_42.py        # Tier 0: Permanent bug reproduction tests
   tier1_unit/
     test_workflow_builder.py
     test_node_logic.py
@@ -209,12 +243,15 @@ def test_agent_execution():
 
 ## Critical Rules
 
+- ✅ Tier 0: Every bug fix starts with a failing regression test
+- ✅ Tier 0: Regression tests are permanent — NEVER delete them
 - ✅ Tier 1: Mock external dependencies
 - ✅ Tier 2-3: Use real infrastructure
 - ✅ Use Docker for test databases
 - ✅ Clean up resources after tests
 - ✅ Cache LLM responses for cost
-- ✅ Run Tier 1 in CI, Tier 2-3 optionally
+- ✅ Run Tier 0-1 in CI, Tier 2-3 optionally
+- ❌ NEVER publish a bug fix without a regression test
 - ❌ Prefer real database in Tier 2-3
 - ❌ Prefer real HTTP calls in Tier 2-3
 - ❌ NEVER skip resource cleanup
@@ -228,6 +265,7 @@ def test_agent_execution():
 pytest
 
 # Run by tier
+pytest tests/regression/                    # Tier 0: Regression
 pytest tests/tier1_unit/
 pytest tests/tier2_integration/
 pytest tests/tier3_e2e/
