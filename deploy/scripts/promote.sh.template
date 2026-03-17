@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# promote.sh — Full deployment pipeline: staging → production
+#
+# Usage:
+#   bash deploy/scripts/promote.sh [--skip-staging]
+#
+# What this script does:
+#   1. Pulls latest code (if on a remote server, adjust as needed)
+#   2. Runs stage.sh to verify the staging environment
+#   3. Runs deploy.sh to promote to production (only if staging passed)
+#
+# This is the RECOMMENDED way to deploy. It enforces the staging gate
+# in a single command without the risk of forgetting step 2.
+#
+# Placeholders to replace:
+#   (none — this script delegates to stage.sh and deploy.sh)
+# ==============================================================================
+
+set -euo pipefail
+
+SKIP_STAGING=false
+for arg in "$@"; do
+  case "$arg" in
+    --skip-staging)
+      SKIP_STAGING=true
+      ;;
+  esac
+done
+
+echo "======================================================"
+echo "  Full Deployment Pipeline"
+echo "======================================================"
+
+# Pull latest changes
+echo "Pulling latest code..."
+git pull origin main
+
+if [ "$SKIP_STAGING" = false ]; then
+  echo ""
+  echo "--- Step 1/2: Staging verification ---"
+  bash deploy/scripts/stage.sh
+
+  echo ""
+  echo "--- Step 2/2: Production deploy ---"
+  bash deploy/scripts/deploy.sh
+else
+  echo ""
+  echo "WARNING: --skip-staging flag set. Skipping staging step."
+  echo "         Document the reason in deploy/deployment-config.md."
+  echo ""
+  echo "--- Deploying to production ---"
+  bash deploy/scripts/deploy.sh --skip-staging
+fi
+
+echo ""
+echo "======================================================"
+echo "  Pipeline complete."
+echo "======================================================"

@@ -1,0 +1,137 @@
+# ==============================================================================
+# docker-compose.dev.yml.template — Development Docker Compose configuration
+#
+# Key characteristics of development compose:
+#   - Source code volume-mounted for hot reload (no rebuild on code changes)
+#   - Database and cache ports exposed to host for local tooling
+#     (restricted to loopback: 127.0.0.1 only)
+#   - ENVIRONMENT=development (enables dev RBAC bypass, verbose logging)
+#   - No resource limits (maximize developer machine performance)
+#   - Debug/reload tools available
+#
+# Placeholders to replace:
+#   {{PROJECT_NAME}}        — Container name prefix (e.g. myapp)
+#   {{BACKEND_SERVICE}}     — Backend service name (e.g. backend, unified_nexus)
+#   {{BACKEND_DOCKERFILE}}  — Path to backend Dockerfile (e.g. Dockerfile)
+#   {{BACKEND_PORT}}        — Backend API port (e.g. 8000)
+#   {{FRONTEND_SERVICE}}    — Frontend service name (e.g. web, frontend)
+#   {{FRONTEND_DOCKERFILE}} — Path to frontend Dockerfile (e.g. apps/web/Dockerfile)
+#   {{FRONTEND_PORT}}       — Frontend dev server port (e.g. 3000)
+#   {{SOURCE_MOUNT}}        — Source path to mount (e.g. ./src:/app/src)
+#   {{POSTGRES_VERSION}}    — PostgreSQL image version (e.g. 15-alpine)
+#   {{REDIS_VERSION}}       — Redis image version (e.g. 7-alpine)
+#   {{DEV_PG_PORT}}         — Host-side Postgres port for local tooling (e.g. 5432)
+#   {{DEV_REDIS_PORT}}      — Host-side Redis port for local tooling (e.g. 6379)
+# ==============================================================================
+
+services:
+
+  # ---- Backend API (hot-reload) ----
+  {{BACKEND_SERVICE}}:
+    build:
+      context: .
+      dockerfile: {{BACKEND_DOCKERFILE}}
+      args:
+        GIT_HASH: dev
+    container_name: {{PROJECT_NAME}}_dev_{{BACKEND_SERVICE}}
+    env_file: .env.dev
+    environment:
+      ENVIRONMENT: development
+      RUNTIME_TYPE: async
+    ports:
+      - "{{BACKEND_PORT}}:{{BACKEND_PORT}}"
+    volumes:
+      # Hot-reload: mount source code into container
+      # Changes to source take effect immediately without rebuild
+      - {{SOURCE_MOUNT}}
+      # Preserve logs between restarts
+      - dev_backend_logs:/var/log/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dev_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:{{BACKEND_PORT}}/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---- Frontend (dev server with hot module replacement) ----
+  {{FRONTEND_SERVICE}}:
+    build:
+      context: .
+      dockerfile: {{FRONTEND_DOCKERFILE}}
+      args:
+        GIT_HASH: dev
+        BUILD_TARGET: dev
+    container_name: {{PROJECT_NAME}}_dev_{{FRONTEND_SERVICE}}
+    env_file: .env.dev
+    environment:
+      NODE_ENV: development
+    ports:
+      - "{{FRONTEND_PORT}}:{{FRONTEND_PORT}}"
+    networks:
+      - dev_network
+    restart: unless-stopped
+
+  # ---- PostgreSQL ----
+  postgres:
+    image: postgres:{{POSTGRES_VERSION}}
+    container_name: {{PROJECT_NAME}}_dev_postgres
+    env_file: .env.dev
+    ports:
+      # Exposed to host for local DB tooling (psql, TablePlus, etc.)
+      # Restricted to loopback only — NOT accessible from other machines
+      - "127.0.0.1:{{DEV_PG_PORT}}:5432"
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dev_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ---- Redis ----
+  redis:
+    image: redis:{{REDIS_VERSION}}
+    container_name: {{PROJECT_NAME}}_dev_redis
+    ports:
+      # Exposed to host for local Redis tooling (redis-cli, RedisInsight, etc.)
+      # Restricted to loopback only
+      - "127.0.0.1:{{DEV_REDIS_PORT}}:6379"
+    volumes:
+      - dev_redis_data:/data
+    networks:
+      - dev_network
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  dev_postgres_data:
+    driver: local
+  dev_redis_data:
+    driver: local
+  dev_backend_logs:
+    driver: local
+
+networks:
+  dev_network:
+    driver: bridge

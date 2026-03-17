@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# stage.sh — Staging environment verification script
+#
+# Usage:
+#   bash deploy/scripts/stage.sh
+#
+# What this script does:
+#   1. Builds the same Docker images that production will use
+#   2. Starts services on staging ports (separate from production)
+#   3. Runs health checks against the staging environment
+#   4. Runs smoke tests (if configured)
+#   5. On pass: writes .staging-passed marker with current commit hash
+#   6. On fail: exits non-zero and does NOT write the marker
+#
+# Staging runs alongside production on the SAME server using different ports
+# and isolated volumes. It uses the EXACT SAME Dockerfiles as production.
+#
+# Placeholders to replace:
+#   {{STAGING_API_PORT}}    — Port for staging API (e.g. 8001, must differ from prod)
+#   {{STAGING_WEB_PORT}}    — Port for staging web/frontend (e.g. 3001)
+#   {{STAGING_HEALTH_URL}}  — Health URL for staging (e.g. http://localhost:8001/api/health)
+#   {{COMPOSE_STAGING}}     — Staging compose file name (default: docker-compose.staging.yml)
+# ==============================================================================
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+MARKER_FILE="${REPO_ROOT}/.staging-passed"
+COMPOSE_FILE="{{COMPOSE_STAGING}}"
+STAGING_HEALTH_URL="{{STAGING_HEALTH_URL}}"
+
+export GIT_HASH
+GIT_HASH=$(git rev-parse --short HEAD)
+
+echo "======================================================"
+echo "  Staging Verification"
+echo "  Commit: $GIT_HASH"
+echo "======================================================"
+
+# Clean up staging containers before starting
+echo "Stopping any previous staging containers..."
+docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+
+# Build staging images (same Dockerfiles as production)
+echo "Building staging images..."
+docker compose -f "$COMPOSE_FILE" build
+
+# Start staging services
+echo "Starting staging services..."
+docker compose -f "$COMPOSE_FILE" up -d
+
+# Wait for services to become healthy
+echo "Waiting for staging to become healthy..."
+RETRIES=12
+WAIT_SECS=5
+for i in $(seq 1 $RETRIES); do
+  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$STAGING_HEALTH_URL" || echo "000")
+  if [ "$HTTP_STATUS" = "200" ]; then
+    echo "Staging health check passed (attempt $i/$RETRIES)"
+    break
+  fi
+  if [ "$i" -eq "$RETRIES" ]; then
+    echo "ERROR: Staging health check failed after $((RETRIES * WAIT_SECS))s (HTTP $HTTP_STATUS)"
+    echo "Check staging logs: docker compose -f $COMPOSE_FILE logs"
+    docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+    exit 1
+  fi
+  echo "Not ready yet (HTTP $HTTP_STATUS), waiting ${WAIT_SECS}s... ($i/$RETRIES)"
+  sleep $WAIT_SECS
+done
+
+# --- Optional: run smoke tests against staging ---
+# Uncomment and customize to add automated test verification:
+#
+# echo "Running smoke tests against staging..."
+# STAGING_API_URL="http://localhost:{{STAGING_API_PORT}}" pytest tests/smoke/ -q
+# if [ $? -ne 0 ]; then
+#   echo "ERROR: Smoke tests failed against staging."
+#   docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+#   exit 1
+# fi
+
+# Stop staging containers
+echo "Staging verified. Stopping staging containers..."
+docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+
+# Write staging-passed marker
+echo "$GIT_HASH" > "$MARKER_FILE"
+
+echo ""
+echo "======================================================"
+echo "  STAGING PASSED — commit $GIT_HASH"
+echo "  Run deploy.sh to promote to production."
+echo "======================================================"

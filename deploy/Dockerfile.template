@@ -1,0 +1,88 @@
+# ==============================================================================
+# Dockerfile.template — Cache-busted multi-stage Dockerfile
+#
+# Key pattern: GIT_HASH ARG as a targeted cache buster.
+#   - System packages and pip dependencies are cached across builds.
+#   - Only the source copy layer and everything after it is invalidated
+#     when GIT_HASH changes (i.e. when your code changes).
+#   - This gives you <60s rebuilds instead of 5-10 minute --no-cache builds.
+#
+# Build with:
+#   export GIT_HASH=$(git rev-parse --short HEAD)
+#   docker build --build-arg GIT_HASH=$GIT_HASH -t {{IMAGE_NAME}} .
+#
+# Placeholders to replace:
+#   {{PYTHON_VERSION}}    — Python base image version (e.g. 3.11-slim)
+#   {{APP_USER}}          — Non-root user to run the app (e.g. appuser)
+#   {{APP_DIR}}           — Application directory inside container (e.g. /app)
+#   {{PACKAGE_NAME}}      — Python package name for pip install (e.g. myapp[server])
+#   {{PORT}}              — Port the application listens on (e.g. 8000)
+#   {{HEALTH_PATH}}       — Health check URL path (e.g. /health or /api/health)
+#   {{START_COMMAND}}     — Command to start the app (e.g. python -m myapp.server)
+# ==============================================================================
+
+# ---- Stage 1: Dependencies ----
+FROM python:{{PYTHON_VERSION}} AS deps
+
+WORKDIR {{APP_DIR}}
+
+# Install system dependencies (cached across builds unless this layer changes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only dependency manifests first (cached until pyproject.toml changes)
+COPY pyproject.toml ./
+# If you use requirements.txt instead:
+# COPY requirements.txt ./
+
+# Install Python dependencies (cached until pyproject.toml changes)
+# Install without the package itself first to cache the dependency layer
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e ".[server]" || \
+    pip install --no-cache-dir -r requirements.txt
+
+
+# ---- Stage 2: Application ----
+FROM python:{{PYTHON_VERSION}} AS app
+
+WORKDIR {{APP_DIR}}
+
+# Create non-root user (security best practice)
+RUN useradd --no-create-home --shell /bin/false {{APP_USER}}
+
+# Copy installed packages from deps stage
+COPY --from=deps /usr/local/lib/python*/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=deps /usr/local/bin /usr/local/bin
+
+# Copy system libraries installed in deps stage
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# GIT_HASH ARG — targeted cache buster for source code layers.
+# Everything AFTER this ARG declaration is invalidated when GIT_HASH changes.
+# System packages and pip installs above are NOT invalidated.
+ARG GIT_HASH=dev
+RUN echo "Build: $GIT_HASH"
+
+# Copy application source
+COPY . .
+
+# Install the package in the final stage (picks up source changes)
+RUN pip install --no-cache-dir -e ".[server]" 2>/dev/null || true
+
+# Set ownership and switch to non-root user
+RUN chown -R {{APP_USER}}:{{APP_USER}} {{APP_DIR}}
+USER {{APP_USER}}
+
+# Expose application port
+EXPOSE {{PORT}}
+
+# Health check — use python urllib (available in all python:slim images without curl)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:{{PORT}}{{HEALTH_PATH}}')" || exit 1
+
+# Start the application
+CMD [{{START_COMMAND}}]

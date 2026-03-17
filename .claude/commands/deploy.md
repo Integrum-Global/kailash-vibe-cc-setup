@@ -118,8 +118,30 @@ Read the config and execute the appropriate track:
 - NEVER hardcode cloud credentials — use CLI SSO only
 - NEVER deploy without running tests first
 - NEVER skip security review before deploy
+- NEVER hot-patch containers with `docker cp` — always rebuild the image
+- NEVER use `--no-cache` in normal builds — use the GIT_HASH ARG cache buster instead
 - ALWAYS get human approval before destructive cloud operations
+- ALWAYS run staging before production (`bash deploy/scripts/stage.sh`)
 - ALWAYS document deployments in `deploy/deployments/`
 - Research current CLI syntax — do not assume stale knowledge is correct
 
-**Automated enforcement**: `validate-deployment.js` hook automatically blocks commits containing cloud credentials (AWS keys, Azure secrets, GCP service account JSON, private keys, GitHub/PyPI/Docker tokens) in deployment files.
+**Automated enforcement**:
+- `validate-deployment.js` hook blocks commits containing cloud credentials in deployment files
+- `validate-prod-deploy.js` hook blocks production Docker commands unless `.staging-passed` is current
+
+## Deploy Script Templates
+
+`deploy/` contains templates for standard deployment patterns. Copy and customize for the project:
+
+| Template | Purpose |
+|----------|---------|
+| `deploy/scripts/deploy.sh.template` | Production deploy with staging gate |
+| `deploy/scripts/stage.sh.template` | Staging verification — writes `.staging-passed` on pass |
+| `deploy/scripts/dev.sh.template` | Start local development environment |
+| `deploy/scripts/promote.sh.template` | Full pipeline: staging then production |
+| `deploy/Dockerfile.template` | GIT_HASH cache-busted multi-stage Dockerfile |
+| `deploy/docker-compose.prod.yml.template` | Production compose (no volume mounts, no exposed DB ports) |
+| `deploy/docker-compose.dev.yml.template` | Development compose (with volume mounts, loopback DB ports) |
+| `deploy/nginx-spa.conf.template` | nginx with no-cache on index.html for SPAs |
+
+Replace all `{{PLACEHOLDER}}` values with project-specific values when instantiating a template.

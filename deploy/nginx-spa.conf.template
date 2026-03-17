@@ -1,0 +1,87 @@
+# ==============================================================================
+# nginx-spa.conf.template — nginx configuration for Single Page Applications
+#
+# Key patterns:
+#   1. index.html is served with NO-CACHE headers — ensures users get the
+#      latest JavaScript bundle after every deployment.
+#   2. Content-hashed static assets (JS, CSS, fonts) are cached aggressively
+#      because their filenames change on every build (Vite/webpack fingerprinting).
+#   3. API requests are proxied to the backend service.
+#   4. All unknown routes serve index.html (client-side routing).
+#
+# Placeholders to replace:
+#   {{BACKEND_SERVICE}}     — Backend container name / hostname (e.g. backend, unified_nexus)
+#   {{BACKEND_PORT}}        — Backend API port (e.g. 8000)
+#   {{API_PREFIX}}          — API URL prefix (e.g. /api)
+#   {{STATIC_DIR}}          — Path to built SPA files inside container (e.g. /usr/share/nginx/html)
+# ==============================================================================
+
+server {
+    listen 80;
+    server_name _;
+
+    root {{STATIC_DIR}};
+    index index.html;
+
+    # ---- index.html: NEVER cache ----
+    # This is the entry point for the SPA. Browsers that cache this file will
+    # serve stale JS bundles to users after deployment.
+    location = /index.html {
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+        try_files $uri /index.html;
+    }
+
+    # ---- Content-hashed static assets: cache forever ----
+    # Vite/webpack generates filenames like main.abc123.js — the hash changes
+    # when content changes, so it is safe to cache these indefinitely.
+    location ~* \.(js|css|woff2?|ttf|eot|otf|ico|png|jpg|jpeg|gif|svg|webp|avif)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # ---- API proxy ----
+    # Forward API requests to the backend container.
+    location {{API_PREFIX}}/ {
+        proxy_pass http://{{BACKEND_SERVICE}}:{{BACKEND_PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 120s;
+        proxy_connect_timeout 10s;
+    }
+
+    # ---- Health check endpoint for nginx itself ----
+    location /health {
+        access_log off;
+        return 200 "OK\n";
+        add_header Content-Type text/plain;
+    }
+
+    # ---- Client-side routing fallback ----
+    # All routes not matched above serve index.html so the SPA router can handle them.
+    location / {
+        add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+        add_header Pragma "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ---- Security headers ----
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # ---- Gzip compression ----
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript
+               text/xml application/xml application/xml+rss text/javascript
+               image/svg+xml;
+    gzip_min_length 1024;
+    gzip_comp_level 6;
+}

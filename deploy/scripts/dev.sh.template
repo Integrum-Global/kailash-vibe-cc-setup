@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# dev.sh — Development environment startup script
+#
+# Usage:
+#   bash deploy/scripts/dev.sh [--build] [--down]
+#
+# What this script does:
+#   - Starts the local development environment with hot-reload
+#   - Source code is volume-mounted — no rebuild needed for code changes
+#   - Database and cache ports are exposed to the host for local tooling
+#   - ENVIRONMENT=development (enables dev RBAC bypass, verbose logging)
+#
+# Placeholders to replace:
+#   {{COMPOSE_DEV}}       — Dev compose file name (default: docker-compose.dev.yml)
+#   {{DEV_API_URL}}       — Local API URL (e.g. http://localhost:8000/api/health)
+# ==============================================================================
+
+set -euo pipefail
+
+COMPOSE_FILE="{{COMPOSE_DEV}}"
+DEV_API_URL="{{DEV_API_URL}}"
+BUILD=false
+DOWN=false
+
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --build)
+      BUILD=true
+      ;;
+    --down)
+      DOWN=true
+      ;;
+  esac
+done
+
+if [ "$DOWN" = true ]; then
+  echo "Stopping development environment..."
+  docker compose -f "$COMPOSE_FILE" down --remove-orphans
+  exit 0
+fi
+
+echo "======================================================"
+echo "  Development Environment"
+echo "======================================================"
+
+if [ "$BUILD" = true ]; then
+  echo "Building development images..."
+  export GIT_HASH
+  GIT_HASH=$(git rev-parse --short HEAD)
+  docker compose -f "$COMPOSE_FILE" build
+fi
+
+echo "Starting development services..."
+docker compose -f "$COMPOSE_FILE" up -d
+
+# Brief wait then show status
+sleep 3
+docker compose -f "$COMPOSE_FILE" ps
+
+echo ""
+echo "Development environment running."
+echo "API: $DEV_API_URL"
+echo ""
+echo "To follow logs:  docker compose -f $COMPOSE_FILE logs -f"
+echo "To stop:         bash deploy/scripts/dev.sh --down"
+echo "To rebuild:      bash deploy/scripts/dev.sh --build"

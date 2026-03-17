@@ -245,3 +245,140 @@ The agent should always research these before configuring -- they change frequen
 - Current best practices for trusted publisher (OIDC) setup on PyPI
 
 Use `web search` and CLI `--help` rather than relying on trained knowledge.
+
+---
+
+## Docker Deployment Patterns (Learned from Production)
+
+These patterns come from running real deployments and represent hard-won lessons about what goes wrong.
+
+### Pattern 1: GIT_HASH Cache Buster in Dockerfiles
+
+The standard `--no-cache` flag is wasteful — it rebuilds everything including OS packages and pip/npm dependencies. The GIT_HASH ARG pattern gives you targeted cache invalidation: only layers that depend on source code are invalidated when your code changes.
+
+```dockerfile
+# Place BEFORE source COPY — everything after this is invalidated when hash changes
+ARG GIT_HASH=dev
+RUN echo "Build: $GIT_HASH"   # This RUN invalidates the cache when GIT_HASH changes
+
+COPY . .
+RUN pip install -e .
+```
+
+```bash
+# Build with cache busting on every real commit, cache hits on re-runs
+export GIT_HASH=$(git rev-parse --short HEAD)
+docker compose -f docker-compose.prod.yml build backend
+```
+
+**Result**: Typical build time drops from 5-10 minutes (--no-cache) to under 60 seconds.
+
+**Rule**: If you find yourself reaching for `--no-cache`, add or fix the `GIT_HASH` ARG instead.
+
+### Pattern 2: NEVER Hot-Patch Running Containers
+
+`docker cp` into a running container is NOT a deployment:
+
+| Change type | Why docker cp fails |
+|-------------|-------------------|
+| Python source code | pip-installed package is in site-packages, not your source tree; module already loaded in memory |
+| FastAPI/Nexus routes | Routes registered at startup; running process never discovers new routes |
+| React/SPA build | Build manifest and asset fingerprints are out of sync; browser may load wrong bundle |
+
+**The only correct procedure**:
+1. Commit the change
+2. `export GIT_HASH=$(git rev-parse --short HEAD)`
+3. `docker compose -f docker-compose.prod.yml build <service>`
+4. `docker compose -f docker-compose.prod.yml up -d <service>`
+
+### Pattern 3: Dev / Staging / Production Compose Separation
+
+Use three separate compose files — never try to express environment differences purely through variables in a single file.
+
+| File | Purpose | Key characteristics |
+|------|---------|-------------------|
+| `docker-compose.dev.yml` | Local development | Source volume mounts, DB ports exposed to loopback, `ENVIRONMENT=development` |
+| `docker-compose.staging.yml` | Pre-production gate | Same Dockerfiles as prod, different ports, isolated volumes, `ENVIRONMENT=staging` |
+| `docker-compose.prod.yml` | Live production | No volume mounts, no exposed DB ports, resource limits, `ENVIRONMENT=production` |
+
+**Why separate files**: Production config must be immediately readable. Mental merging of base + override files introduces errors under pressure.
+
+### Pattern 4: Staging Gate Enforcement
+
+The staging gate prevents code from reaching production without verification. The mechanism uses a `.staging-passed` file containing the verified commit hash.
+
+**Flow**:
+```
+stage.sh                              deploy.sh
+  ↓                                     ↓
+Build same images as prod             Check .staging-passed exists
+Start on staging ports                Verify hash == git rev-parse HEAD
+Run health checks                     If match: proceed
+Run smoke tests (optional)            If missing/stale: BLOCK
+Write .staging-passed = $GIT_HASH     After deploy: rm .staging-passed
+```
+
+**Scripts**: See `deploy/scripts/` for `stage.sh.template`, `deploy.sh.template`, and `promote.sh.template`.
+
+**Hook enforcement**: `validate-prod-deploy.js` (PreToolUse Bash hook) intercepts production docker compose commands and verifies the marker before allowing them to run. This catches accidental bypasses even when running commands manually.
+
+### Pattern 5: nginx Must Serve index.html with No-Cache Headers for SPAs
+
+When nginx serves a React/Vue/Angular app, `index.html` MUST have cache-prevention headers. All other assets (with content-hashed filenames) can be cached aggressively.
+
+```nginx
+# index.html — never cache (entry point to the versioned bundle)
+location = /index.html {
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate";
+    add_header Pragma "no-cache";
+    add_header Expires "0";
+}
+
+# Content-hashed assets — cache forever (filename changes on rebuild)
+location ~* \.(js|css|woff2?|ttf|ico|png|svg)$ {
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+**Why this matters**: A browser that caches `index.html` will serve stale JavaScript to users after deployment. The user sees the new URL but runs the old code. This produces ghost bugs that are very hard to diagnose.
+
+See `deploy/nginx-spa.conf.template` for the full nginx configuration.
+
+### Pattern 6: Database Ports Must Not Be Exposed in Production
+
+Production compose files must NOT expose database or cache ports to the host.
+
+```yaml
+# WRONG in production — exposes DB to host and potentially internet
+postgres:
+  ports:
+    - "5432:5432"
+
+# CORRECT — DB accessible only within Docker network
+postgres:
+  # no ports: section
+  networks:
+    - app_network
+```
+
+Development compose may expose ports to `127.0.0.1` for local tooling.
+
+### Pattern 7: Password/Bcrypt Operations Require Python Scripts
+
+Shell variable expansion silently corrupts bcrypt hashes. The `$` in `$2b$12$...` is expanded by bash as an empty variable.
+
+**Wrong**:
+```bash
+# $2b$12$... becomes $2b$12$ after bash expansion — hash is destroyed
+docker exec postgres psql -U app -c "UPDATE users SET hash='$2b$12$...' WHERE ..."
+```
+
+**Correct**:
+```bash
+# Write a Python script, copy it in, run it — Python doesn't mangle $
+docker cp /tmp/reset_password.py app_container:/tmp/reset_password.py
+docker exec -e NEW_PASSWORD="..." app_container python3 /tmp/reset_password.py
+```
+
+**General rule**: For any database operation with special characters (`$`, `\`, quotes), use a Python script inside the container rather than shell interpolation.

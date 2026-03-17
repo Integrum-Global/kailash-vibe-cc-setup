@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# deploy.sh — Production deployment script
+#
+# Usage:
+#   bash deploy/scripts/deploy.sh [--skip-staging]
+#
+# What this script does:
+#   1. Verifies .staging-passed marker matches the current commit
+#   2. Exports GIT_HASH for cache-busted Docker builds
+#   3. Builds and restarts changed services
+#   4. Runs post-deploy health checks
+#   5. Clears .staging-passed (staging must pass again for the next deploy)
+#
+# Prerequisites:
+#   - stage.sh must have been run on the current commit first
+#   - .env file present with production values
+#
+# Placeholders to replace:
+#   {{SERVER_USER}}         — SSH user on production server (e.g. ubuntu, ec2-user)
+#   {{SERVER_HOST}}         — Production server hostname or IP
+#   {{SSH_KEY_PATH}}        — Path to SSH private key (e.g. ~/.ssh/my-key.pem)
+#   {{REPO_DIR}}            — Absolute path to repo on production server
+#   {{HEALTH_URL}}          — URL to check after deploy (e.g. https://app.example.com/api/health)
+#   {{SERVICES}}            — Space-separated list of Docker services to rebuild
+#                             (e.g. "backend web" or "unified_nexus web")
+# ==============================================================================
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+MARKER_FILE="${REPO_ROOT}/.staging-passed"
+SKIP_STAGING=false
+
+# Parse arguments
+for arg in "$@"; do
+  case "$arg" in
+    --skip-staging)
+      SKIP_STAGING=true
+      ;;
+  esac
+done
+
+echo "======================================================"
+echo "  Production Deploy"
+echo "======================================================"
+
+# --- Staging gate ---
+if [ "$SKIP_STAGING" = false ]; then
+  if [ ! -f "$MARKER_FILE" ]; then
+    echo ""
+    echo "ERROR: .staging-passed marker not found."
+    echo ""
+    echo "Run staging first:"
+    echo "  bash deploy/scripts/stage.sh"
+    echo ""
+    echo "Or use the full pipeline:"
+    echo "  bash deploy/scripts/promote.sh"
+    echo ""
+    echo "Emergency bypass (document the reason in deployment-config.md):"
+    echo "  bash deploy/scripts/deploy.sh --skip-staging"
+    echo ""
+    exit 1
+  fi
+
+  STAGED_COMMIT=$(cat "$MARKER_FILE")
+  CURRENT_COMMIT=$(git rev-parse --short HEAD)
+
+  if [ "$STAGED_COMMIT" != "$CURRENT_COMMIT" ]; then
+    echo ""
+    echo "ERROR: Staging marker is stale."
+    echo "  Staged commit  : $STAGED_COMMIT"
+    echo "  Current commit : $CURRENT_COMMIT"
+    echo ""
+    echo "Re-run staging for the current commit:"
+    echo "  bash deploy/scripts/stage.sh"
+    echo ""
+    exit 1
+  fi
+
+  echo "Staging verified for commit: $CURRENT_COMMIT"
+else
+  echo "WARNING: --skip-staging flag set. Skipping staging gate."
+  echo "         Document the reason in deploy/deployment-config.md."
+fi
+
+# --- Export build arg ---
+export GIT_HASH
+GIT_HASH=$(git rev-parse --short HEAD)
+echo "Building with GIT_HASH=$GIT_HASH"
+
+# --- Pull latest code on server (if deploying to remote) ---
+# Uncomment and customize if deploying via SSH:
+#
+# echo "Pulling latest code on production server..."
+# ssh -i "{{SSH_KEY_PATH}}" "{{SERVER_USER}}@{{SERVER_HOST}}" \
+#   "cd {{REPO_DIR}} && git pull origin main"
+#
+# echo "Building and restarting services..."
+# ssh -i "{{SSH_KEY_PATH}}" "{{SERVER_USER}}@{{SERVER_HOST}}" "
+#   cd {{REPO_DIR}}
+#   export GIT_HASH=\$(git rev-parse --short HEAD)
+#   for service in {{SERVICES}}; do
+#     docker compose -f docker-compose.prod.yml build \$service
+#     docker compose -f docker-compose.prod.yml up -d \$service
+#   done
+# "
+
+# --- Local production deploy (single server, deploy runs locally) ---
+# Replace with SSH block above if deploying remotely.
+for service in {{SERVICES}}; do
+  echo "Building service: $service"
+  docker compose -f docker-compose.prod.yml build "$service"
+  echo "Restarting service: $service"
+  docker compose -f docker-compose.prod.yml up -d "$service"
+done
+
+# --- Health check ---
+echo "Waiting for services to become healthy..."
+sleep 5
+
+echo "Checking health endpoint..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "{{HEALTH_URL}}" || echo "000")
+if [ "$HTTP_STATUS" = "200" ]; then
+  echo "Health check passed (HTTP $HTTP_STATUS)"
+else
+  echo "WARNING: Health check returned HTTP $HTTP_STATUS — verify manually."
+fi
+
+# --- Clear staging marker ---
+if [ -f "$MARKER_FILE" ]; then
+  rm "$MARKER_FILE"
+  echo "Staging marker cleared. Run stage.sh before next deploy."
+fi
+
+echo ""
+echo "======================================================"
+echo "  Deployment complete: $(git rev-parse --short HEAD)"
+echo "======================================================"
