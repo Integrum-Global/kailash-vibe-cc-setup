@@ -116,7 +116,28 @@ add_connection("from_node", "from_output", "to_node", "to_input")
 1. Connection parameters in wrong order
 2. Correct: `(from_node, from_output, to_node, to_input)`
 
+## Production Readiness Patterns
+
+When implementing production features (transactions, persistence, distributed systems), apply these mandatory patterns:
+
+1. **Protocol + Default + Mock**: Every extension point needs a Protocol, a default impl, and a MockImpl for testing
+2. **Bounded collections**: `deque(maxlen=10000)` for all long-lived lists, periodic cleanup for dicts
+3. **SQLite persistence**: WAL mode, 0o600 permissions, parameterized SQL only, re-check WAL/SHM permissions after first write
+4. **SSRF prevention**: Validate URLs with DNS resolution against blocked private networks
+5. **SQL identifier validation**: Regex `^[a-zA-Z_][a-zA-Z0-9_]*$` on all table/column names
+6. **Exception handling**: NEVER catch `CancelledError`/`KeyboardInterrupt`/`SystemExit` — always re-raise
+7. **math.isfinite()**: Validate ALL numeric config fields
+8. **Serialization degradation**: Log warning + set `_serialization_degraded: True` flag on str() fallback
+9. **Generic error messages**: Never expose `str(e)` in API responses — log full error server-side
+10. **Dangerous node blocking**: Block `PythonCodeNode`/`AsyncPythonCodeNode` in NodeExecutor by default
+
+See skill: `production-readiness-patterns` for full code examples.
+
 ## Skill References
+
+### Production Readiness
+
+- **[production-readiness-patterns](../../.claude/skills/01-core-sdk/production-readiness-patterns.md)** - 10 hardened patterns from 3 red team rounds
 
 ### Basic Patterns
 - **[workflow-quickstart](../../.claude/skills/01-core-sdk/workflow-quickstart.md)** - Basic workflow creation

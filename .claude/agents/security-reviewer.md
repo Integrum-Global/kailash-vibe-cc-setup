@@ -107,6 +107,23 @@ These checks are MANDATORY for any code touching TrustPlane or EATP modules.
 
 > These 11 patterns were hardened through 14 rounds of red teaming.
 
+### 9. Production Readiness Security Patterns
+
+These checks apply to ALL production code, especially new features touching runtime, transactions, persistence, or HTTP clients. Hardened through 3 red team rounds and 67 findings.
+
+- [ ] **PR1 — Bounded collections**: Every long-lived list MUST be `deque(maxlen=N)`. Dicts with per-key growth need periodic cleanup. **Violation**: unbounded `List[Dict]` in monitoring, metrics, or history tracking.
+- [ ] **PR2 — SSRF prevention**: HTTP clients making requests to user-configurable URLs MUST validate against private IP ranges AND resolve DNS hostnames. **Violation**: `aiohttp.post(user_url)` without `_validate_url()`.
+- [ ] **PR3 — SQL identifier validation**: Table names and column names in dynamic SQL MUST match `^[a-zA-Z_][a-zA-Z0-9_]*$`. **Violation**: `f"SELECT * FROM {table_name}"` without validation.
+- [ ] **PR4 — Exception re-raising**: NEVER catch `CancelledError`, `KeyboardInterrupt`, or `SystemExit`. **Violation**: bare `except Exception` that catches these.
+- [ ] **PR5 — Generic API error messages**: API responses MUST NOT contain `str(e)`. Log full error server-side, return generic message to client. **Violation**: `{"error": str(e)}` in REST endpoints.
+- [ ] **PR6 — Node type allowlist**: `RegistryNodeExecutor` MUST block `PythonCodeNode`/`AsyncPythonCodeNode` by default. **Violation**: executing arbitrary node types from user input.
+- [ ] **PR7 — SQLite file permissions**: All SQLite files MUST be 0o600 on POSIX, including WAL and SHM files created lazily after first write. **Violation**: default umask permissions.
+- [ ] **PR8 — Redis URL validation**: Redis URLs MUST start with `redis://` or `rediss://`. **Violation**: passing unvalidated URL to `Redis.from_url()`.
+- [ ] **PR9 — Rate limiting**: All public endpoints accepting external input MUST have rate limiting. **Violation**: unauthenticated `/signals` endpoint without rate limit.
+- [ ] **PR10 — Response header filtering**: Proxy handlers MUST use an allowlist for response headers. **Violation**: `headers=dict(resp.headers)` forwarding all upstream headers.
+
+> See skill: `production-readiness-patterns` in `skills/01-core-sdk/` for full code examples.
+
 ## Review Output Format
 
 Provide findings as:
