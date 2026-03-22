@@ -1,6 +1,6 @@
 ---
 name: kaizen
-description: "Kailash Kaizen - production-ready AI agent framework with signature-based programming, multi-agent coordination, and enterprise features. Use when asking about 'AI agents', 'agent framework', 'BaseAgent', 'multi-agent systems', 'agent coordination', 'signatures', 'agent signatures', 'RAG agents', 'vision agents', 'audio agents', 'multimodal agents', 'agent prompts', 'prompt optimization', 'chain of thought', 'ReAct pattern', 'Planning agent', 'PEV agent', 'Tree-of-Thoughts', 'pipeline patterns', 'supervisor-worker', 'router pattern', 'ensemble pattern', 'blackboard pattern', 'parallel execution', 'agent-to-agent communication', 'A2A protocol', 'streaming agents', 'agent testing', 'agent memory', 'agentic workflows', 'AgentRegistry', 'OrchestrationRuntime', 'distributed agents', 'agent registry', '100+ agents', 'capability discovery', 'fault tolerance', 'health monitoring', 'trust protocol', 'EATP', 'TrustedAgent', 'trust chains', 'secure messaging', 'enterprise trust', 'credential rotation', 'trust verification', 'cross-organization agents', 'agent manifest', 'TOML manifest', 'GovernanceManifest', 'deploy agent', 'FileRegistry', 'introspect agent', 'DAG validation', 'validate_dag', 'schema compatibility', 'cost estimation', 'composition validation', 'catalog server', 'CatalogMCPServer', 'MCP catalog', 'budget tracking', 'BudgetTracker', 'PostureBudgetIntegration', 'posture budget', or 'budget threshold'."
+description: "Kailash Kaizen - production-ready AI agent framework with signature-based programming, multi-agent coordination, and enterprise features. Use when asking about 'AI agents', 'agent framework', 'BaseAgent', 'multi-agent systems', 'agent coordination', 'signatures', 'agent signatures', 'RAG agents', 'vision agents', 'audio agents', 'multimodal agents', 'agent prompts', 'prompt optimization', 'chain of thought', 'ReAct pattern', 'Planning agent', 'PEV agent', 'Tree-of-Thoughts', 'pipeline patterns', 'supervisor-worker', 'router pattern', 'ensemble pattern', 'blackboard pattern', 'parallel execution', 'agent-to-agent communication', 'A2A protocol', 'streaming agents', 'agent testing', 'agent memory', 'agentic workflows', 'AgentRegistry', 'OrchestrationRuntime', 'distributed agents', 'agent registry', '100+ agents', 'capability discovery', 'fault tolerance', 'health monitoring', 'trust protocol', 'EATP', 'TrustedAgent', 'trust chains', 'secure messaging', 'enterprise trust', 'credential rotation', 'trust verification', 'cross-organization agents', 'agent manifest', 'TOML manifest', 'GovernanceManifest', 'deploy agent', 'FileRegistry', 'introspect agent', 'DAG validation', 'validate_dag', 'schema compatibility', 'cost estimation', 'composition validation', 'catalog server', 'CatalogMCPServer', 'MCP catalog', 'budget tracking', 'BudgetTracker', 'PostureBudgetIntegration', 'posture budget', 'budget threshold', 'L3 autonomy', 'L3 primitives', 'EnvelopeTracker', 'EnvelopeSplitter', 'EnvelopeEnforcer', 'ScopedContext', 'ContextScope', 'ScopeProjection', 'DataClassification', 'MessageRouter', 'MessageChannel', 'DeadLetterStore', 'AgentFactory', 'AgentInstance', 'AgentInstanceRegistry', 'AgentSpec', 'PlanExecutor', 'PlanValidator', 'PlanModification', 'Plan DAG', 'gradient zone', 'agent spawning', 'cascade termination', 'scoped context', 'envelope enforcement', 'plan execution', or 'agent lifecycle'."
 ---
 
 # Kailash Kaizen - AI Agent Framework
@@ -227,6 +227,35 @@ For in-depth documentation, see `packages/kailash-kaizen/docs/`:
   - `PostureBudgetIntegration` links budget to posture state machine
   - Configurable thresholds: warning (80%), downgrade to SUPERVISED (95%), emergency to PSEUDO_AGENT (100%)
 
+### L3 Autonomy Primitives
+
+- **[kaizen-l3-overview](kaizen-l3-overview.md)** - L3 primitives overview (5 subsystems)
+  - EnvelopeTracker/Splitter/Enforcer for continuous budget tracking
+  - ScopedContext for hierarchical context with access control
+  - MessageRouter/Channel for typed inter-agent messaging
+  - AgentFactory/Registry for runtime agent spawning
+  - PlanValidator/Executor for DAG task graph execution
+- **[kaizen-l3-envelope](kaizen-l3-envelope.md)** - Budget tracking, splitting, and non-bypassable enforcement
+  - `EnvelopeTracker` with atomic recording, child allocation, reclamation
+  - `EnvelopeSplitter` for stateless ratio-based budget division
+  - `EnvelopeEnforcer` middleware with gradient zones (AutoApproved/Flagged/Held/Blocked)
+- **[kaizen-l3-context](kaizen-l3-context.md)** - Hierarchical scoped context with projection-based access control
+  - `ContextScope` tree with parent traversal and child merge
+  - `ScopeProjection` glob patterns (allow/deny with deny precedence)
+  - `DataClassification` 5-level clearance filtering
+- **[kaizen-l3-messaging](kaizen-l3-messaging.md)** - Typed inter-agent communication
+  - `MessageRouter` with 8-step validation
+  - 6 typed payloads: Delegation, Status, Clarification, Completion, Escalation, System
+  - `DeadLetterStore` bounded ring buffer for undeliverable messages
+- **[kaizen-l3-factory](kaizen-l3-factory.md)** - Runtime agent spawning with lifecycle tracking
+  - `AgentFactory` with 8-check spawn preconditions
+  - 6-state lifecycle machine (Pending/Running/Waiting/Completed/Failed/Terminated)
+  - Cascade termination (leaves-first)
+- **[kaizen-l3-plan-dag](kaizen-l3-plan-dag.md)** - Dynamic task graph execution
+  - `PlanValidator` structural + envelope validation
+  - `PlanExecutor` with gradient rules (G1-G8)
+  - 7 typed modifications with batch-atomic application
+
 ### v1.0 Developer Guides
 
 Located in the package source:
@@ -350,6 +379,12 @@ Use Kaizen when you need to:
   - Estimate pipeline costs from historical data
   - Discover/deploy agents via MCP Catalog Server
   - Link budget thresholds to automatic posture transitions
+- **L3 Autonomy Primitives**:
+  - Agent spawning with PACT-governed lifecycle tracking
+  - Continuous budget tracking with gradient zones and non-bypassable enforcement
+  - Hierarchical scoped context with projection-based access control
+  - Typed inter-agent messaging with 8-step routing validation
+  - Dynamic task graph execution with gradient-driven failure handling
 
 **Use Pipeline Patterns When:**
 
