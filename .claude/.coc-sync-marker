@@ -1,40 +1,56 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-06-26T22:52:26Z
+timestamp: 2026-06-29T08:14:51Z
 source: loom/.claude
-loom_sha: 9101e34
+loom_sha: e2ac475
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: Obsoletion propagation — codex/gemini-templates added to .coc-obsoleted (F1 #685 follow-up; loom 9755c2d→9101e34, content CONSISTENT, no re-emit)
+headline: gitignore_additions per-clone trust-state fix (coordination-log.jsonl* + 7 siblings; journal/0368) + SDK pin refresh + accumulated artifacts; loom 9101e34→e2ac475 (2.45.0 unchanged)
 stats:
-  copied: 0                 # narrow cycle — content already CONSISTENT (sync-tier-aware --verify, 1441 files); no content writes
-  variant_only: 0
-  overlay_applied: 0
+  copied: 1274
+  variant_only: 13
+  overlay_applied: 157
+  overlay_verified: 157
+  verified: 1274
   verify_failures: 0
   overlay_verify_failures: 0
   variant_only_verify_failures: 0
-  purged: 0                 # no obsoleted path present in this template (verify: no obsoleted path present)
-  obsoleted_manifest:
-    regenerated: true        # .claude/.coc-obsoleted rebuilt from sync-manifest.yaml::obsoleted + use_obsoleted
-    lines: 74                # 3 header + 71 paths (69 unique + 2 dups: terrene-naming/independence)
-    prev_lines: 69
-    new_entries:             # additive — every prior entry preserved
-      - .claude/codex-templates/    # F1 #685 — orphan multi-CLI source tree, downstream auto-purge
-      - .claude/gemini-templates/   # F1 #685 — orphan multi-CLI source tree, downstream auto-purge
-      - .claude/commands/sync.md    # prior-cycle gap — de-surfaced /sync triplet, now in manifest union
-      - .codex/prompts/sync.md
-      - .gemini/commands/sync.toml
-  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, dev-container/*]
+  stripped: 35
+  swallowed: 0
+  purged: 0                 # no obsoleted path present in this template
+  overlay_orphans_purged: 0
+  gitignore:
+    action: replaced
+    added: 24
+    pre_bytes: 1162
+    post_bytes: 1550        # +388B managed coc:gitignore_additions block
+    coordination_log_present: true
+  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
   baselines_emitted:
-    cc: 0                   # CLAUDE.md preserved, not emitted
+    cc: 0                   # CLAUDE.md preserved (template-owned), not emitted
 distribution:
-  tool: sync-tier-aware.mjs --target py --all-templates --verify
+  tool: sync-tier-aware.mjs --target py --all-templates
   verify: CONSISTENT
-  files_total: 1441
-sdk_pin_changes: none       # PRESERVED — BUILD kailash-py pyproject 2.44.1; no PyPI-resolvable bump warranted
-uv_sync: skipped            # no pyproject.toml change
+sdk_pin_changes:            # PyPI-resolvable, matches BUILD kailash-py packages/
+  kailash-dataflow: 2.12.0 -> 2.13.1
+  kailash-pact: 0.14.1 -> 0.14.3
+  kailash-ml: 2.2.1 -> 2.2.2
+  kailash-align: 0.7.2 -> 0.7.4
+sdk_packages:
+  kailash: "2.44.1"
+  kailash-dataflow: "2.13.1"
+  kailash-nexus: "2.11.0"
+  kailash-kaizen: "2.28.0"
+  kailash-pact: "0.14.3"
+  kailash-mcp: "0.2.15"
+  kailash-ml: "2.2.2"
+  kailash-align: "0.7.4"
+  kaizen-agents: "0.9.11"
+uv_sync: clean              # exit 0; dataflow/ml/pact upgraded in base env, align under [align] extra
+hooks_resolve: 28/28
+scripts_hooks_refs: 0
+template_version: "3.23.0"  # was 3.22.3 (minor: gitignore fix + pin refresh)
 notes:
-  - "Narrow obsoletion-propagation cycle: only .coc-obsoleted regeneration (Step 4.5) + marker + VERSION patch bump. Content files untouched (sync-tier-aware --verify CONSISTENT both templates)."
-  - ".coc-obsoleted now carries the manifest's full obsoleted+use_obsoleted union (74 lines); downstream /sync-from-template can auto-purge leaked .claude/codex-templates/ + .claude/gemini-templates/ orphan trees (leaked at v2.23.1)."
-  - "session-end.js requires ../learning/digest-builder (learning/** excluded runtime dir) — identical in loom source, guarded by try/catch + observationCount>=5; not a sync defect."
+  - "Cycle initially halted on a loom-source swallowed-artifact gate (gitignored .DS_Store + .env-template swept into the always-include filesystem walk). Orchestrator removed the loom junk + filed the structural fix (sync-tier-aware must honor source .gitignore) as loom#710 before this completion."
+  - "Driving change: sync-manifest gitignore_additions gained 8 per-clone trust-state entries (coordination-log.jsonl*, provenance/, posture.json, .initialized, learning-codified.json, learning-digest.json, .heartbeat-cache*, .session-end-cache*) — closes journal/0368 trust-state-commit leak class."
