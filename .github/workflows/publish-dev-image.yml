@@ -73,7 +73,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to the ecosystem registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           # docker/login-action defaults to docker.io when `registry:` is omitted;
           # the pull pointers carry docker.io, so the publish login MUST
