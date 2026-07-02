@@ -160,7 +160,7 @@ Every package published via PyPI OIDC trusted-publishing MUST be registered as a
 #
 # Required field values MUST match exactly:
 #   PyPI Project Name:  kailash-ml
-#   Owner:              terrene-foundation
+#   Owner:              <org>
 #   Repository:         kailash-py
 #   Workflow filename:  publish-pypi.yml
 #   Environment name:   testpypi
