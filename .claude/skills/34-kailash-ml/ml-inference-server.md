@@ -46,7 +46,7 @@ server = InferenceServer.from_registry("churn_predictor", registry=registry, run
 server = InferenceServer.from_registry("churn_predictor", registry=registry, runtime="pickle")
 ```
 
-ONNX is the default because it is the format kailash-rs and any ONNX Runtime
+ONNX is the default because it is the format the Rust SDK and any ONNX Runtime
 environment can load — train in Python, serve anywhere.
 
 ## Version Pinning

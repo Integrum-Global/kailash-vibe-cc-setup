@@ -9,7 +9,7 @@ Reviews your repo's artifacts for quality and template alignment. Scope depends 
 
 ## BUILD vs USE Repo Distinction
 
-- **BUILD repos** (kailash-py, kailash-rs, kailash-prism): no `agents/project/` or `skills/project/` directories. Every artifact lives in a canonical location (`agents/frameworks/`, `skills/01-core-sdk/`, etc.) and is subject to the same fidelity checks as loom/. The Phase 1 inventory in a BUILD repo walks ALL artifact directories, not just `project/`.
+- **BUILD repos** (kailash-py, the Rust SDK, kailash-prism): no `agents/project/` or `skills/project/` directories. Every artifact lives in a canonical location (`agents/frameworks/`, `skills/01-core-sdk/`, etc.) and is subject to the same fidelity checks as loom/. The Phase 1 inventory in a BUILD repo walks ALL artifact directories, not just `project/`.
 - **Downstream USE repos** (consumer projects): project-specific artifacts live in `agents/project/` and `skills/project/`. The Phase 1 inventory focuses on these, since shared artifacts are owned by the upstream template and audited at loom/.
 
 If this repo is a BUILD repo, skip the `project/`-only inventory below and audit all canonical artifact directories.

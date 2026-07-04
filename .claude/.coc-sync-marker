@@ -1,42 +1,30 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-02T15:41:08Z
+timestamp: 2026-07-04T11:54:12Z
 source: loom/.claude
-loom_sha: 618e23dd9f390e3d8730815c097d0bb2cbe6ab88
+loom_sha: f259523abe9dddb5b7cd1dae4ecdfc040fd62b77
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: distribute #743 coherence layer + item-3 detector from loom 618e23d; SDK pin refresh to BUILD kailash-py 2.45.1 (kailash 2.44.1->2.45.1, dataflow 2.13.1->2.13.2)
-stats:
-  copied: 1375
-  variant_only: 13
-  overlay_applied: 157
-  overlay_verified: 157
-  verified: 1375
-  verify_failures: 0
-  overlay_verify_failures: 0
-  variant_only_verify_failures: 0
-  stripped: 53                # content-equal after BUILD-internal ref strip
-  byte_equal: 1322
-  swallowed: 0
-  purged: 9
-  gitignore:
-    action: replaced
-    declared: 25
-    pre_bytes: 1550
-    post_bytes: 1589
-  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-  baselines_emitted:
-    cc: 0                     # CLAUDE.md preserved (template-owned), not emitted
+headline: loom 618e23d->f259523 redistribution (two-phase Gate-2); SDK pin refresh to BUILD kailash-py 2.45.3 (kailash 2.45.1->2.45.3, dataflow 2.13.2->2.13.13)
 distribution:
-  tool: sync-tier-aware.mjs --target py --all-templates
-  verify: CONSISTENT
-sdk_pin_changes:             # matches BUILD kailash-py root 2.45.1 + packages/
-  kailash: 2.44.1 -> 2.45.1
-  kailash-dataflow: 2.13.1 -> 2.13.2
-sdk_packages:
-  kailash: "2.45.1"
-  kailash-dataflow: "2.13.2"
+  mechanism: two-phase Gate-2 (deterministic engine compose + agent enrichment)
+  tool: sync-tier-aware.mjs --target py (orchestrator-run)
+  verify: CONSISTENT              # engine compose applied + verified by orchestrator before enrichment
+worktree_changed_paths:          # observed diff vs base b6901406 in this worktree
+  total: 55
+  modified: 48
+  deleted: 1                      # .claude/commands/sync.md (obsoleted de-surfaced /sync)
+  new: 6
+preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
+baselines_emitted:
+  cc: 0                           # CLAUDE.md preserved (template-owned), not emitted
+sdk_pin_changes:                  # BUILD kailash-py current, all PyPI-resolvable
+  kailash: 2.45.1 -> 2.45.3       # BUILD 2.45.3; PyPI HTTP 200
+  kailash-dataflow: 2.13.2 -> 2.13.13  # BUILD packages/ 2.13.13; published to PyPI mid-cycle, HTTP 200
+sdk_packages:                     # == pyproject.toml pins == BUILD packages/ == PyPI-resolvable
+  kailash: "2.45.3"
+  kailash-dataflow: "2.13.13"
   kailash-nexus: "2.11.0"
   kailash-kaizen: "2.28.0"
   kailash-pact: "0.14.3"
@@ -44,10 +32,16 @@ sdk_packages:
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
   kaizen-agents: "0.9.11"
-uv_sync: clean               # exit 0
+uv_resolve: clean                 # uv lock resolved 313 packages (registry=pypi.org); kailash 2.45.3, dataflow 2.13.13
+uv_sync: build_failure_env        # install-phase build of transitive llvmlite 0.44.0 fails under Python 3.14 (setuptools spawn(dry_run) incompat) — env issue, NOT a kailash-pin/resolution failure
 hooks_resolve: 28/28
 scripts_hooks_refs: 0
-template_version: "3.24.0"   # was 3.23.0 (minor: #743 coherence-layer distribution + SDK pin refresh)
+settings_pii_tokens: 0
+description_label: "(Python)"
+multi_cli_scaffold: n/a           # cc-only-legacy, clis=[claude]
+inbox: already-present            # ensure-exists no-op
+template_version: "3.25.0"        # was 3.24.0 (minor: SDK pin refresh)
 notes:
-  - "Distributes the #743 coherence layer + item-3 detector artifacts landed at loom 618e23d (e2ac475->618e23d)."
-  - "SDK pins bumped to BUILD kailash-py current: kailash 2.44.1->2.45.1, kailash-dataflow 2.13.1->2.13.2; remaining packages unchanged."
+  - "Two-phase Gate-2: deterministic sync-tier-aware engine compose done + verified CONSISTENT by orchestrator; this marker records the agent enrichment residue only."
+  - "SDK pins == BUILD packages/ == PyPI-resolvable: kailash 2.45.3, kailash-dataflow 2.13.13 (dataflow published to PyPI mid-cycle; earlier in-cycle it was 404, pin briefly held at 2.13.12 then advanced to 2.13.13 once published)."
+  - "uv lock resolution is clean (313 pkgs). Full `uv sync` install fails building transitive llvmlite 0.44.0 under Python 3.14 (setuptools distutils spawn() dry_run kwarg regression) — toolchain/env issue independent of the kailash pins; orchestrator to adjudicate whether install-verify blocks finalize."
