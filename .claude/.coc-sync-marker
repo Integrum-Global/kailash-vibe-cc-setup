@@ -1,42 +1,32 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-02T15:41:08Z
+timestamp: 2026-07-05T05:39:17Z
 source: loom/.claude
-loom_sha: 618e23dd9f390e3d8730815c097d0bb2cbe6ab88
+loom_sha: a67471822e3d6cde2143a1436bd4ac64fe14dd7c
+loom_sha_short: a674718
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: distribute #743 coherence layer + item-3 detector from loom 618e23d; SDK pin refresh to BUILD kailash-py 2.45.1 (kailash 2.44.1->2.45.1, dataflow 2.13.1->2.13.2)
-stats:
-  copied: 1375
-  variant_only: 13
-  overlay_applied: 157
-  overlay_verified: 157
-  verified: 1375
-  verify_failures: 0
-  overlay_verify_failures: 0
-  variant_only_verify_failures: 0
-  stripped: 53                # content-equal after BUILD-internal ref strip
-  byte_equal: 1322
-  swallowed: 0
-  purged: 9
-  gitignore:
-    action: replaced
-    declared: 25
-    pre_bytes: 1550
-    post_bytes: 1589
-  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-  baselines_emitted:
-    cc: 0                     # CLAUDE.md preserved (template-owned), not emitted
+headline: loom 618e23d->a674718 redistribution (SAFR S1 MUST-8 + SAFRS ledger + accumulated main drift); engine-applied artifact delta + Gate-2 enrichment residue; SDK pins refreshed to BUILD kailash-py 2.45.3 (kailash 2.45.1->2.45.3, dataflow 2.13.2->2.13.16)
 distribution:
-  tool: sync-tier-aware.mjs --target py --all-templates
-  verify: CONSISTENT
-sdk_pin_changes:             # matches BUILD kailash-py root 2.45.1 + packages/
-  kailash: 2.44.1 -> 2.45.1
-  kailash-dataflow: 2.13.1 -> 2.13.2
-sdk_packages:
-  kailash: "2.45.1"
-  kailash-dataflow: "2.13.2"
+  mode: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
+  tool: sync-tier-aware.mjs --target py
+  verify: engine --verify passed (apply + verify ran in the orchestrator's engine stage)
+stats:
+  changed_files_in_worktree: 62   # engine-applied artifact delta at enrichment time (.claude 60 + pyproject 1 + scripts 1); pre-enrichment worktree state was 60
+  changed_by_top_dir:
+    ".claude": 60                 # rules 21, guides 11, skills 7, bin 5, commands 5, hooks 5, agents 3, audit-fixtures 2, VERSION 1 (+ this marker set)
+    "pyproject.toml": 1           # SDK pin refresh (enrichment)
+    "scripts": 1
+  baselines_emitted:
+    cc: 0                         # CLAUDE.md preserved (template-owned), not emitted
+  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
+sdk_pin_changes:                  # BUILD kailash-py root/__init__ 2.45.3
+  kailash: 2.45.1 -> 2.45.3       # PyPI HTTP 200
+  kailash-dataflow: 2.13.2 -> 2.13.16  # BUILD main 2.13.17 unreleased (PyPI HTTP 404); pin=PyPI-resolvable-latest per deployment.md
+sdk_packages:                     # == pyproject.toml pins (step-3 parity)
+  kailash: "2.45.3"
+  kailash-dataflow: "2.13.16"
   kailash-nexus: "2.11.0"
   kailash-kaizen: "2.28.0"
   kailash-pact: "0.14.3"
@@ -44,10 +34,14 @@ sdk_packages:
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
   kaizen-agents: "0.9.11"
-uv_sync: clean               # exit 0
-hooks_resolve: 28/28
-scripts_hooks_refs: 0
-template_version: "3.24.0"   # was 3.23.0 (minor: #743 coherence-layer distribution + SDK pin refresh)
+build_source_of_truth:           # BUILD kailash-py @ main (HEAD 0822151, PR #1563)
+  kailash: "2.45.3"
+  kailash-dataflow: "2.13.17"     # unreleased on PyPI; template pin holds at PyPI-resolvable 2.13.16
+enrichment:
+  uv_sync: resolved-but-build-env-failure   # Resolved 298 packages (ALL pins resolve, incl. kailash 2.45.3 / dataflow 2.13.16 / ml 2.2.2); native build of transitive llvmlite==0.44.0 failed for an ENVIRONMENT reason (Python 3.14 setuptools: "spawn() got an unexpected keyword argument 'dry_run'"), NOT a pin-resolution failure. Pins verified resolvable; build-env failure is out-of-scope per Gate-2 uv-sync contract.
+  hooks_resolve: 38/38           # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; PII-clean
+  inbox_ensure_exists: no-op     # .claude/.proposals/inbox/{README.md,.gitkeep} already present
+template_version: "3.25.0"        # was 3.24.0 (minor: per-cycle bump + SDK pin refresh)
 notes:
-  - "Distributes the #743 coherence layer + item-3 detector artifacts landed at loom 618e23d (e2ac475->618e23d)."
-  - "SDK pins bumped to BUILD kailash-py current: kailash 2.44.1->2.45.1, kailash-dataflow 2.13.1->2.13.2; remaining packages unchanged."
+  - "Artifact content delta applied deterministically by the engine (sync-tier-aware); this marker records the Gate-2 enrichment residue (markers, VERSION, pins, uv sync, hooks, inbox)."
+  - "kailash-dataflow BUILD main is 2.13.17 but not yet published to PyPI (HTTP 404 verified 2026-07-05); pin tracks PyPI-resolvable latest 2.13.16 per deployment.md 'pin tracks PyPI' convention (precedent: template changelog 3.21.5/3.21.9)."

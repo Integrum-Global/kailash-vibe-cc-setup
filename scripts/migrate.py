@@ -19,7 +19,7 @@ marked `# REPLACE:`. Do not import this module directly — it is a template,
 not a runnable migration.
 
 This template imports from `kailash-dataflow` (kailash-py), which is not a
-dependency of the kailash-rs repo where this template lives. The pyright
+dependency of the Rust SDK repo where this template lives. The pyright
 directive below suppresses the template-only import warning; downstream
 Python projects that copy this file will resolve the import normally.
 """
