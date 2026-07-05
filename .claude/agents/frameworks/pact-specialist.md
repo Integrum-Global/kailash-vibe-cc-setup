@@ -142,7 +142,7 @@ Per `.claude/rules/pact-governance.md`:
 
 ## Security Invariants (Cross-SDK)
 
-Discovered during kailash-rs red team. Violations are BLOCK-level findings.
+Discovered during the Rust SDK red team. Violations are BLOCK-level findings.
 
 ### 1. GovernanceContext Must NOT Be Deserializable
 

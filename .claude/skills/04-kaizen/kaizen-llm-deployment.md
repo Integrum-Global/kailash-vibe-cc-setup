@@ -52,11 +52,11 @@ client = LlmClient.from_deployment(deployment)
 
 Three-tier resolution; first tier present wins. Deployment-tier signals coexisting with legacy keys emit a WARN (the deployment path still wins):
 
-| Tier | Signal | Grammar |
-| ---- | ------ | ------- |
-| 1 | `KAILASH_LLM_DEPLOYMENT` URI | `bedrock://region/model`, `vertex://project/location/model`, `azure://resource/deployment`, `openai-compat://base_url` |
-| 2 | `KAILASH_LLM_PROVIDER` selector | `openai` / `anthropic` / `bedrock_claude` / `vertex_claude` / `azure_openai` / `groq` / `openai_compatible` / `anthropic_compatible` / `mock` |
-| 3 | Legacy per-provider keys | `OPENAI_API_KEY` → `ANTHROPIC_API_KEY` → `GOOGLE_API_KEY` → Azure → Bedrock (bearer token alone activates `bedrock_claude`) |
+| Tier | Signal                          | Grammar                                                                                                                                       |
+| ---- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `KAILASH_LLM_DEPLOYMENT` URI    | `bedrock://region/model`, `vertex://project/location/model`, `azure://resource/deployment`, `openai-compat://base_url`                        |
+| 2    | `KAILASH_LLM_PROVIDER` selector | `openai` / `anthropic` / `bedrock_claude` / `vertex_claude` / `azure_openai` / `groq` / `openai_compatible` / `anthropic_compatible` / `mock` |
+| 3    | Legacy per-provider keys        | `OPENAI_API_KEY` → `ANTHROPIC_API_KEY` → `GOOGLE_API_KEY` → Azure → Bedrock (bearer token alone activates `bedrock_claude`)                   |
 
 ```python
 client = LlmClient.from_env()  # returns a usable client or raises ConfigError
@@ -132,7 +132,7 @@ SSRF regression tests MUST exist for each new wire-send method — assert `Endpo
 - **Wire shapers are byte-identical** for fixed input (stricter than the general "semantics match" rule — the JSON body sent to the provider must be the same bytes from both SDKs)
 - Implementation idioms may differ (Pydantic classmethods on Python, typed constructors on Rust)
 
-Every new preset / wire shaper on the Python side files a cross-SDK issue on `esperie-enterprise/kailash-rs` (or vice versa).
+Every new preset / wire shaper on the Python side files a cross-SDK issue on the Rust SDK BUILD repo (resolver key `build.rs`; resolve the real org/repo via the gitignored `loom-links.local.json`) (or vice versa).
 
 ## Error taxonomy
 
@@ -169,11 +169,11 @@ Never invent new exceptions. `ProviderError.body_snippet` is auto-scrubbed for k
 
 ## Testing layout (cross-reference)
 
-| Tier | Location | Purpose |
-| ---- | -------- | ------- |
-| 1 | `tests/unit/llm/test_*.py` | Shaper pure-function contract, preset construction, URI grammar |
-| 2 | `tests/integration/llm/test_<subject>_wiring.py` | Real provider if creds in env, structural + SSRF regression always |
-| Cross-SDK | `tests/integration/llm/test_cross_sdk_parity.py` | Byte-identical payload-builder comparison with Rust fixtures |
+| Tier      | Location                                         | Purpose                                                            |
+| --------- | ------------------------------------------------ | ------------------------------------------------------------------ |
+| 1         | `tests/unit/llm/test_*.py`                       | Shaper pure-function contract, preset construction, URI grammar    |
+| 2         | `tests/integration/llm/test_<subject>_wiring.py` | Real provider if creds in env, structural + SSRF regression always |
+| Cross-SDK | `tests/integration/llm/test_cross_sdk_parity.py` | Byte-identical payload-builder comparison with Rust fixtures       |
 
 File naming convention enforced: Tier 2 files are `test_<lowercase_subject>_wiring.py` so absence is grep-able per `rules/facade-manager-detection.md` §2.
 
@@ -182,4 +182,4 @@ File naming convention enforced: Tier 2 files are `test_<lowercase_subject>_wiri
 - `specs/kaizen-llm-deployments.md` — authoritative spec (#498 S9 ship)
 - #498 S1–S9: four-axis abstraction + 24 presets + from_env + cross-SDK parity + CHANGELOG + migration guide
 - #462: `embed()` wire-send method for OpenAI + Ollama (precedent for `complete()`)
-- Cross-SDK: `esperie-enterprise/kailash-rs#406` (deployment), `#393` (embed), `#394` (errors)
+- Cross-SDK: the Rust SDK's #406 (deployment), #393 (embed), #394 (errors)

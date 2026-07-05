@@ -1,16 +1,22 @@
 # COC Sync Marker — kailash-coc-claude-py (CC-only)
 # (Note: superseded by .claude/.coc-sync-marker which is the canonical
-#  YAML location per coc-sync agent Step 9; this file kept as a
-#  back-reference for the prior 2.8.26 → 2.13.0 history visible at
-#  the repo root.)
-timestamp: 2026-05-01T12:30:00Z
+#  YAML location per coc-sync agent Step 9. Header below carries the CURRENT
+#  monotonic loom_sha anchor; the stats block is retained as a back-reference
+#  for the prior 2.8.26 → 2.13.0 history. For current-cycle stats + SDK pins,
+#  read .claude/.coc-sync-marker.)
+timestamp: 2026-07-05T05:39:17Z
 source: loom/.claude
-loom_version: 2.13.0
-loom_sha: 36db224
+loom_sha: a67471822e3d6cde2143a1436bd4ac64fe14dd7c
+loom_sha_short: a674718
 variant: py
 clis: ["claude"]
 template: kailash-coc-claude-py
-template_version: 3.6.4
+template_version: 3.25.0
+canonical_marker: .claude/.coc-sync-marker
+# --- historical back-reference (frozen at 2.13.0 / template 3.6.4) ---
+historical_loom_version: 2.13.0
+historical_loom_sha: 36db224
+historical_template_version: 3.6.4
 stats:
   updated: 7
   created: 2              # gitignored-claude-warn.js + pre-commit-branch-scope.js
