@@ -63,7 +63,10 @@ the accessors). NEVER edit a synced artifact to carry the registry inline (`cros
 
 Invoke `runEnrollmentCeremony` (invariant 3). For an org-owned fork the verified-org-admin attestation
 is the trust anchor (issue #358 org-owned bootstrap); for a user-owned fork the signed root commit is.
-Owner-class gate; the signed `genesis-anchor` record lands in the coordination log.
+Owner-class gate; the signed `genesis-anchor` record lands on BOTH surfaces via the composed
+enrollment-seed transport (`enrollment-seed-transport.js::createEnrollmentSeedTransport`) — the
+canonical FETCHABLE git ref `refs/coc/coordination-gen<N>` (uncapped; the fresh-clone recovery
+surface, loom#879) FIRST, then the local coordination-log cache.
 
 ### C2 — set the four remaining ecosystem-relative params
 

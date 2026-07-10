@@ -70,6 +70,7 @@ secrets/
 .coc-fetch-cache
 .claude/learning/codify-lease.json
 .claude/learning/coordination-mode.json
+.claude/learning/.ss-banner-*
 .claude/learning/observations.jsonl
 .claude/learning/violations.jsonl
 .claude/learning/coordination-log.jsonl*
