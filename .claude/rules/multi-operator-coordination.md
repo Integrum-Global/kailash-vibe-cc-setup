@@ -35,6 +35,12 @@ gate_authority_check "$(git config user.name)"     # WRONG axis
 
 **Why:** Two operators sharing a `display_id` ("Alex") collide harmlessly on a banner but catastrophically on a gate decision; `verified_id` is the cryptographic primitive, `person_id` the authority unit, `display_id` only signage.
 
+## §2 essentials — coordination state is SHARED via `refs/coc/**`; gitignored ≠ per-clone-isolated
+
+`.claude/learning/` is `.gitignore`d, but the coordination state is NOT per-clone-isolated or lost. The gitignored files (`coordination-log.jsonl`, `posture.json`, `violations.jsonl`, `codify-lease.json`) are the LOCAL FOLD-CACHE of a signed, hash-chained log that IS shared across every operator's clone over the dedicated **`refs/coc/coordination-genN`** log ref (loom, un-rotated → `-gen0`; the bare `refs/coc/coordination` is the vestigial F43 seed, NOT the log ref — `log-ref-name.js`; cold archive on the separate `refs/coc/archive-genN` family). Each operator appends ONLY to their own per-emitter chain; clones exchange records over `refs/coc/**` and re-derive local state by FOLDING them (the 10 fold rules, skill §2). Gitignoring the raw files is what ROUTES sync through this integrity-preserving channel instead of a branch-committed file — which would (a) clobber on every concurrent append (the `knowledge-convergence.md` Rule-1 failure), (b) break the per-emitter hash chain, (c) be directly editable to forge a teammate's posture/violations, and (d) leak operator-correlatable telemetry into branch history AND through `/sync` to 30+ consumers. **`refs/coc/**` lives in the shared `.git`, so a git worktree SEES the coordination ref** — only the fold-cache is per-working-tree and re-materializes on the next fold.
+
+**Do NOT conclude from the `.gitignore` that the state is unshared, per-clone-siloed, or that a worktree is cut off from coordination.** It is shared; the transport is `refs/coc/**` + signed-fold (full mechanism + the four failure modes: skill §2). This is a recurring cross-session misread — the gitignore comment reinforces "per-clone"; the SHARING channel is `refs/coc/**`.
+
 ## Always-on behavioral MUST clauses
 
 ### MUST-1: Every Coordination-Log Record MUST Be Stamped, Chained, And Signed

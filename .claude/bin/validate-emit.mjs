@@ -1360,6 +1360,7 @@ const LOOM_ONLY_TIER_CARVEOUTS = new Set([
   "hooks/lib/weft-emit.js",
   "hooks/lib/weft-distributor.js",
   "hooks/lib/weft-dataprotection.js",
+  "hooks/lib/weft-anchor.js",
 ]);
 
 // Check 8 — loom-only mutual exclusion (F104).
