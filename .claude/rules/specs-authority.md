@@ -214,6 +214,48 @@ frontmatter-block guard — updating one without the other creates silent drift)
 
 Origin: atelier `cc-audit-lint-generalize` 2026-05-03 (test fixtures and spec canonicalization deferred to /codify; /vet adversarial round L1). Inbound from atelier `/sync-to-coc`.
 
+### 10. Knowledge-Product Links Use A `knowledge-product:` Field Carrying A Runtime-Resolved `kp://` URN, Inert At Loom
+
+A spec section MAY bind its domain truth to a queryable knowledge product via a **`knowledge-product:` field** whose value is a `kp://<owning_level>/<domain>/<name>@<version>` URN. The URN grammar is OWNED by the mesh identity spec (`workspaces/<project>/specs/02-knowledge-product-identity.md`, or the downstream BUILD/USE spec carrying the mesh domain tree) and MUST be REFERENCED, never restated, per Rule 9 — so a grammar refinement resolves through the reference without re-authoring this rule. The field-type is **governed**: it is the ONLY sanctioned way a spec names a data/knowledge product, and it is **inert at loom** — loom writes the identity string and MUST NOT resolve the URN to a physical reservoir, query it, or materialize its bytes inside a loom session (resolution happens at runtime, in the engine). A `knowledge-product:` value that is not a `kp://`-scheme URN, a URN that embeds the ecosystem/tenant slug (it MUST be ecosystem-relative per the mesh identity spec), OR a loom session that resolves/queries the referent is BLOCKED.
+
+```markdown
+# DO — governed field, referenced grammar, inert at loom
+
+## Churn-risk scoring
+
+...domain truth about how churn risk is computed...
+knowledge-product: kp://use/b3f1c9e2-7a45-4d18-9c60-2e8fb147ad39/churn-features@v3
+(`<domain>` is an OPAQUE HANDLE — grammar per specs/02-knowledge-product-identity.md
+§ "`<domain>` is an OPAQUE HANDLE"; resolved at runtime in the engine — this spec
+names the identity, never queries it)
+
+# DO NOT — non-URN value, ANY readable `<domain>`, a name-derivable handle, or in-session resolution
+
+knowledge-product: churn_features_table # not a kp:// URN
+knowledge-product: kp://use/acme-corp/churn@v3 # readable client slug (leaks + un-cascadeable)
+knowledge-product: kp://use/logistics/churn-features@v3 # readable `<domain>` — BLOCKED TOO, even
+
+# though "logistics" names no client: ANY readable `<domain>` is forbidden, not just a client slug
+
+knowledge-product: kp://use/7f3a9c21/churn-features@v3 # looks opaque, is NOT: an unkeyed hash of a
+
+# low-entropy readable name is invertible offline by every consumer holding the URN
+
+(and a loom session that runs db.product("kp://…").query() to "check the link" —
+resolution is the engine's job at runtime, never loom's)
+```
+
+**BLOCKED rationalizations:**
+
+- "I'll resolve the `kp://` link in-session just to confirm it points somewhere"
+- "It's only a name lookup, not really running the engine inside loom"
+- "The `<domain>` segment can carry the client name — the containment gate needs it" (the URN stays ecosystem-relative; the readable client↔handle mapping lives ONLY in the local non-cascading registry, never the URN)
+- "A bare readable product name is fine in place of the URN; ecosystem-relative is pedantic" (the URN is required; note this is about substituting a bare name FOR the URN — the `<name>` SEGMENT inside a URN is legitimately readable **as a PRODUCT name**, never as a client / engagement / tenant name, which is BLOCKED in ANY URN segment; only `<domain>` is opaque BY CONSTRUCTION)
+- "The client name is fine in `<name>` since only `<domain>` must be opaque" (a readable client / engagement / tenant name is BLOCKED in EVERY segment — `<domain>` is closed by construction, `<name>` by policy; `kp://use/<handle>/acme-churn-features@v3` is BLOCKED)
+- "A plain table/identifier name is close enough to a `kp://` URN"
+
+**Why:** The link makes `specs/` an authority on WHAT + WHERE-to-query, but a loom session that RESOLVES it would run engine code inside the splitter (a "no coding here" violation) and an embedded tenant slug would leak the client name downstream and make the product un-cascadeable. Keeping the field governed + inert is the guard that must precede any cataloging of products.
+
 ## MUST NOT
 
 - Organize specs by COC process stages (duplicates workspaces/)
@@ -223,3 +265,18 @@ Origin: atelier `cc-audit-lint-generalize` 2026-05-03 (test fixtures and spec ca
 **BLOCKED:** "Specs can be written after implementation" / "The code is the spec" / "Plans already capture this" / "Updating specs for minor change is overkill"
 
 Origin: 6 drift failure-mode analysis + journal 0007 / 0008 (full-sibling re-derivation, 2026-04-19/20) + kailash-ml-audit 2026-04-23 (amend-at-launch W32/W33). See guide for full two-session post-mortem.
+
+## Trust Posture Wiring — Rule 10 (knowledge-product field-type)
+
+Applies to the **Rule 10** clause (added 2026-07-11, Mesh S0 `/govern` co-owner-directed origination). Per `trust-posture.md` MUST-8 grandfather cutoff, Rule 10 lands AT/AFTER the MUST-8 SHA and MUST ship canonical-8-field-compliant; the pre-existing grandfathered Rules 1–9 + § MUST NOT remain exempt until each is itself `/codify`-touched (the clause-scoped precedent set by `rule-authoring.md`'s own Wiring section + `security.md` § Enforcement-Surface Parity + `git.md` § CI-check/merge).
+
+- **Severity:** `halt-and-report` at gate-review (cc-architect at `/codify` + reviewer at `/redteam` confirm a `knowledge-product:` field carries a `kp://`-scheme runtime-resolved URN, that the URN is ecosystem-relative, and that no loom session resolves/queries the referent); `advisory` at the hook layer (a `knowledge-product:` value's `kp://` prefix MAY be lexically checked, but the inert-at-loom / no-in-session-resolution property is judgment-bearing per `hook-output-discipline.md` MUST-2 and MUST NOT carry `block`).
+- **Grace period:** 7 days from clause landing (2026-07-11 → 2026-07-18).
+- **Cumulative posture impact:** same-class violations (a `knowledge-product:` field with a non-`kp://` value or an embedded ecosystem/tenant slug, OR a loom session resolving/querying the referent) contribute to `trust-posture.md` MUST Rule 4 cumulative-window math (3× same-rule in 30d → drop 1 posture; 5× total in 30d → drop 1 posture).
+- **Regression-within-grace:** a same-class violation within the 7-day grace window routes through the GENERIC `regression_within_grace` emergency trigger per `trust-posture.md` MUST-4 (1× = drop 1 posture) — NO dedicated per-clause trigger key (a spec-field-convention property is review-layer-only + semantic; minting a key would drag `trust-posture.md`, a self-referential-codify allowlist file, into a self-ref edit; the universal `regression_within_grace` trigger already covers it). Named deviation from the canonical key-per-clause shape, recorded here per `trust-posture.md` Rule 8 — the same no-dedicated-key disposition `security.md` § Enforcement-Surface Parity and `git.md` § CI-check/merge took.
+- **Receipt requirement:** SessionStart soft-gate `[ack: specs-authority]` IFF `posture.json::pending_verification` includes the `specs-authority` rule_id.
+- **Detection mechanism:** Phase 1 (manual, gate-review) — cc-architect at `/codify` + reviewer at `/redteam` inspect any spec edit adding or altering a `knowledge-product:` field: confirm the value is a `kp://`-scheme URN, ecosystem-relative (no tenant/ecosystem slug embedded), the grammar is referenced not restated (Rule 9), and the session did NOT resolve/query the referent. Phase 2 (deferred per `trust-posture.md` § Two-Phase Rollout) — an advisory `PostToolUse(Edit|Write)` lexical tripwire flagging a `knowledge-product:` value that lacks a `kp://` prefix MAY pair with the review layer per `probe-driven-verification.md` MUST-4; audit fixtures land with the Phase-2 detector at `.claude/audit-fixtures/knowledge-product-field-type/` per `cc-artifacts.md` Rule 9.
+- **Violation scope:** the Rule 10 knowledge-product-field-type clause ONLY (clause-scoped); the pre-existing grandfathered Rules 1–9 + § MUST NOT stay exempt until each is itself `/codify`-touched.
+- **Origin:** journal/0466 (Mesh S0 `/govern` co-owner-directed origination) + the mesh identity spec `02-knowledge-product-identity.md` § "The URN"; ratified roadmap `01-wave-roadmap.md` § S0.
+
+**Length rationale (per `rules/rule-authoring.md` MUST NOT § "Rules longer than 200 lines").** Rule body is ~272 lines, over the 200-line guidance. Named rationale: **specs-authority-contract scope** — the rule codifies the complete specs-as-domain-truth contract across its numbered rules (1–10 plus the 5b/5c sub-rules): the `specs/` + `_index.md` requirement, domain-ontology organization, detail-not-summaries, phase-command read-before-act, first-instance update + sibling re-derivation + at-launch todo amendment, deviation acknowledgment, delegation spec-inclusion, large-file split, workspace-specs-reference-not-restate, and the Rule 10 `knowledge-product:` field-type — each carrying the DO/DO-NOT + `**Why:**` the meta-rule mandates, plus the canonical 8-field Trust-Posture Wiring the post-cutoff Rule 10 requires. The rule is `priority: 10` + `scope: path-scoped`, so it pays NO baseline-emission cost (loaded only in sessions matching its `paths:` globs) and `rule-authoring.md` Rule 10's proximity-band gate does NOT fire. Splitting the domain-truth rules into siblings would fragment the one contract every spec edit consults and force cross-rule lookups. Sibling precedent: `artifact-flow.md` + `cc-artifacts.md` + `sync-completeness.md` length rationales.
