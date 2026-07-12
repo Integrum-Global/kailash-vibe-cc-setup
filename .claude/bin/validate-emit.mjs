@@ -205,7 +205,7 @@ const COMMAND_LINE_CAP = 150; // cc-artifacts.md Rule 3 + command-authoring SKIL
 // subdirectory does NOT inherit the exemption — matches how the rest of this
 // file addresses artifacts by `rel`.
 const COMMAND_LINE_CAP_EXCEPTIONS = Object.freeze({
-  ".claude/commands/sweep.md": { maxBodyLines: 162, receipt: "journal/0429" }, // 166 wc -l
+  ".claude/commands/sweep.md": { maxBodyLines: 173, receipt: "journal/0468" }, // 177 wc -l (162→173: Sweep-10 deferred-quality revisit + 6-part management report, journal/0468)
   ".claude/commands/wrapup.md": { maxBodyLines: 160, receipt: "journal/0429" }, // 164 wc -l
 });
 
