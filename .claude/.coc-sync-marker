@@ -1,47 +1,56 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-12T06:53:13Z
+timestamp: 2026-07-16T14:31:41Z
 source: loom/.claude
-loom_sha: f403a49c055d8a1efafe5a87e2263094590e01b9
-loom_sha_short: f403a49c
+loom_sha: f84241d96a93c0b8fa60ecf60e998f1a689491d0
+loom_sha_short: f84241d9
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: loom 5eea21d->f403a49c redistribution (F9 Gate-2 re-sync, sync-completeness Rule 8 cascade); engine-applied 18-file artifact delta + Gate-2 enrichment residue; SDK pins UNCHANGED (all 9 already BUILD-current at 2.48.0 set) — 5eea21d->f403a49c delta is COC governance/tooling only, no SDK bumps
+headline: loom f403a49c->f84241d9 redistribution (Gate-2 /sync-to-use); engine-applied 97-file artifact delta + Gate-2 enrichment residue; SDK pins BUMPED 2.48.0->2.53.0 set (6 package bumps); FIRST application of the F1030d/#1051 fail-closed consumer-runtime bin allowlist to this template — 32 loom-internal bin/ tools + lint-prose-drift fixtures purged
 distribution:
   mode: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
   tool: sync-gate2-worktree.mjs --lane use --target claude-py (wraps sync-tier-aware --target py)
-  verify: engine --verify CONSISTENT (1568 in-plan files matched; no obsoleted path present)
+  base_sha: a1638f41b186a99c801a81c4b936e3dfed45deb6   # claude-py origin/main at stage time
+  verify: engine --verify CONSISTENT (1590 in-plan files matched; no obsoleted path present)
 stats:
-  changed_files_in_worktree: 18   # engine-applied artifact delta (.claude); enrichment adds VERSION + this marker
+  changed_files_in_worktree: 97   # engine-applied artifact delta (.claude/ + pyproject); enrichment adds VERSION + this marker on top
   engine_manifest:
-    added: 2                       # rules/product-completion-first.md, skills/sweep/
-    modified: 16                   # rules 8 (autonomous-execution, self-referential-codify, spec-accuracy, specs-authority, sync-completeness, trust-posture, wave-loop, zero-tolerance); commands 2 (redteam, sweep); bin 2 (sync-tier-aware, validate-emit); hooks 1 (lib/state-resolver); skills 2 (30-.../sync-flow, 30-.../user-flow-validation-walk-discipline); .coc-obsoleted
-    deleted: 0
+    added: 26                      # mesh bin/* + mesh audit-fixtures + cross-repo-authorize (bin+cmd) + cc-cost.mjs/cost-audit.md + presence-proof{,-verify}.js + codex-hook-runtime.js + conformance-walk (rule+skill) + repo-scope-drift fixtures
+    modified: 39                   # rules 9 (artifact-flow, knowledge-cascade-routing, multi-operator-coordination, orphan-detection, repo-scope-discipline, self-referential-codify, spec-accuracy, specs-authority, tenant-isolation) + commands/codify.md + hooks 11 + bin 5 + skills 5 + roster schema + .coc-obsoleted + .gitignore
+    deleted: 32                    # F1030d/#1051 fail-closed bin allowlist purge: bin/{sync-tier-aware,sync-gate2-worktree,check-sync-freshness,check-rule-injection-budget,lint-prose-drift,loom-links-init,repin-downstream,sync-consumer-dryrun,validate-coc-parity}.mjs + bin/lib/{loom-links,fleet-*}.mjs + lint-prose-drift audit-fixtures (16)
   baselines_emitted:
     cc: 0                          # CLAUDE.md preserved (template-owned), not emitted
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-sdk_pin_changes: none-this-cycle   # all 9 pins already BUILD-current at 2.48.0 set (unchanged from prior 3.26.0 cycle); no SDK bump between loom 5eea21d and f403a49c
-sdk_packages:                      # == pyproject.toml pins (step-3 parity)
-  kailash: "2.48.0"
-  kailash-dataflow: "2.14.7"
-  kailash-nexus: "2.11.0"
-  kailash-kaizen: "2.29.0"
-  kailash-pact: "0.14.3"
-  kailash-mcp: "0.2.15"
+sdk_pin_changes: bumped-this-cycle  # 6 package bumps (kailash 2.48.0->2.53.0, dataflow 2.14.7->2.18.0, nexus 2.11.0->2.12.0, kaizen 2.29.0->2.33.1, pact 0.14.3->0.15.0, mcp 0.2.15->0.4.0); ml/align/kaizen-agents unchanged
+sdk_packages:                      # == pyproject.toml pins (step-3 parity) == BUILD kailash-py source of truth
+  kailash: "2.53.0"
+  kailash-dataflow: "2.18.0"
+  kailash-nexus: "2.12.0"
+  kailash-kaizen: "2.33.1"
+  kailash-pact: "0.15.0"
+  kailash-mcp: "0.4.0"
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
   kaizen-agents: "0.9.11"
-build_source_of_truth:            # BUILD kailash-py current (unchanged since 3.26.0 cycle)
-  kailash: "2.48.0"               # == template pin (PyPI-resolvable)
-  kailash-dataflow: "2.14.7"     # == template pin (PyPI-resolvable)
-  kailash-kaizen: "2.29.0"       # == template pin (PyPI-resolvable)
+build_source_of_truth:            # BUILD kailash-py current (2026-07-16)
+  kailash: "2.53.0"               # pyproject.toml + src/kailash/__init__.py agree
+  kailash-dataflow: "2.18.0"
+  kailash-nexus: "2.12.0"
+  kailash-kaizen: "2.33.1"
+  kailash-pact: "0.15.0"
+  kailash-mcp: "0.4.0"
+  kailash-ml: "2.2.2"
+  kailash-align: "0.7.4"
+  kaizen-agents: "0.9.11"
 enrichment:
-  uv_sync: no-op                  # pins unchanged from prior 3.26.0 cycle; existing uv.lock already resolves the 2.48.0 pin set. No pin move to re-lock.
-  hooks_resolve: 38/38            # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
+  uv_sync: relocked               # pins bumped this cycle; uv.lock re-locked to the 2.53.0 pin set in the install step
+  hooks_resolve: 28/28            # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
   description_label: "(Python)"   # parenthetical matches variant key py (Step 6b)
-template_version: "3.27.0"        # was 3.26.0 (minor: per-redistribution-cycle bump; no SDK pin move)
+template_version: "3.28.0"        # was 3.27.0 (minor: per-redistribution-cycle bump)
+upstream_sdk_anchor: "2.53.0"     # upstream.version = build_version = template_version, SDK-anchored (was 2.48.0)
 notes:
-  - "F9 Gate-2 re-sync cut from loom@f403a49c (origin/main, authorized source). CWD was moved to a fresh branch at HEAD f403a49c so the un-merged feat/mesh-d6-d7-convergence rule edits (beyond f403a49c) are excluded from this cascade."
-  - "spec-accuracy.md + specs-authority.md ARE in the 16-modified set, but at their f403a49c (origin/main) versions — NOT the un-merged mesh edits; those ride a later sync once merged to main."
-  - "Artifact content delta applied deterministically by the engine (sync-tier-aware --verify CONSISTENT); this marker records the Gate-2 enrichment residue (marker, VERSION, hooks verify). Rule 8 N/A — cc-only-legacy has no derived CLI tree."
+  - "Gate-2 /sync-to-use cut from loom@f84241d9 (origin/main = this worktree HEAD, authorized source per team-lead)."
+  - "Step-0 check-sync-freshness returned non-zero (stale LOCAL main refs); documented false-positive under the worktree-from-remote-main model — engine distributes from this worktree (=origin/main) and stages the target at its own origin/main. Team-lead authorized proceed (option a)."
+  - "Version anchor ratified by team-lead: SDK-anchored 2.53.0 (NOT loom coc-source VERSION 2.45.0, which is provenance-only). Established template schema: version = build_version = template_version = BUILD kailash SDK version."
+  - "Rule 8 N/A — cc-only-legacy has no derived CLI tree (no .codex/.gemini/.coc re-emit)."
