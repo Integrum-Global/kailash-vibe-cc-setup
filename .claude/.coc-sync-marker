@@ -1,28 +1,29 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-12T06:53:13Z
+timestamp: 2026-07-16T16:55:07Z
 source: loom/.claude
-loom_sha: f403a49c055d8a1efafe5a87e2263094590e01b9
-loom_sha_short: f403a49c
+loom_sha: 8b5b6be15d3b6310784310b59a87a65542013412
+loom_sha_short: 8b5b6be1
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: loom 5eea21d->f403a49c redistribution (F9 Gate-2 re-sync, sync-completeness Rule 8 cascade); engine-applied 18-file artifact delta + Gate-2 enrichment residue; SDK pins UNCHANGED (all 9 already BUILD-current at 2.48.0 set) — 5eea21d->f403a49c delta is COC governance/tooling only, no SDK bumps
+headline: loom f403a49c->8b5b6be1 CONTENT-ONLY redistribution (Gate-2 re-sync, ~2-3 weeks accumulated COC artifact updates). Engine-applied 97-file artifact delta (sync-tier-aware --verify CONSISTENT, 1590 in-plan). CONTENT-ONLY mode (co-owner-ratified Option A) — template_version UNCHANGED at 3.27.0; all 9 SDK pins UNCHANGED at 2.48.0 set; NO version or pin move this cycle.
 distribution:
-  mode: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
+  mode: content-only            # co-owner-ratified Option A — no template semver bump, no SDK pin refresh
+  engine: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
   tool: sync-gate2-worktree.mjs --lane use --target claude-py (wraps sync-tier-aware --target py)
-  verify: engine --verify CONSISTENT (1568 in-plan files matched; no obsoleted path present)
+  verify: engine --verify CONSISTENT (1590 in-plan files matched; no obsoleted path present)
 stats:
-  changed_files_in_worktree: 18   # engine-applied artifact delta (.claude); enrichment adds VERSION + this marker
+  changed_files_in_worktree: 97  # engine-applied artifact delta (.claude/ + .gitignore); enrichment adds this marker
   engine_manifest:
-    added: 2                       # rules/product-completion-first.md, skills/sweep/
-    modified: 16                   # rules 8 (autonomous-execution, self-referential-codify, spec-accuracy, specs-authority, sync-completeness, trust-posture, wave-loop, zero-tolerance); commands 2 (redteam, sweep); bin 2 (sync-tier-aware, validate-emit); hooks 1 (lib/state-resolver); skills 2 (30-.../sync-flow, 30-.../user-flow-validation-walk-discipline); .coc-obsoleted
-    deleted: 0
+    added: 26                     # incl. mesh-* bin tooling, cross-repo-authorize bin+command, conformance-walk rule+skill, audit-fixtures
+    modified: 39                  # rules/hooks/bin/commands/skills/.gitignore content refreshes
+    deleted: 32                   # retired fleet-* / lint-prose-drift / loom-links / sync-* bin + fixtures (loom-local, purged)
   baselines_emitted:
-    cc: 0                          # CLAUDE.md preserved (template-owned), not emitted
+    cc: 0                         # CLAUDE.md preserved (template-owned), not emitted
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-sdk_pin_changes: none-this-cycle   # all 9 pins already BUILD-current at 2.48.0 set (unchanged from prior 3.26.0 cycle); no SDK bump between loom 5eea21d and f403a49c
-sdk_packages:                      # == pyproject.toml pins (step-3 parity)
+sdk_pin_changes: none-this-cycle   # CONTENT-ONLY mode — all 9 pins held at 2.48.0 set (unchanged from prior 3.27.0 cycle); no SDK bump distributed this cascade
+sdk_packages:                      # == pyproject.toml pins (step-3 parity) — UNCHANGED
   kailash: "2.48.0"
   kailash-dataflow: "2.14.7"
   kailash-nexus: "2.11.0"
@@ -32,16 +33,16 @@ sdk_packages:                      # == pyproject.toml pins (step-3 parity)
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
   kaizen-agents: "0.9.11"
-build_source_of_truth:            # BUILD kailash-py current (unchanged since 3.26.0 cycle)
+build_source_of_truth:            # BUILD kailash-py current (unchanged since 3.27.0 cycle)
   kailash: "2.48.0"               # == template pin (PyPI-resolvable)
   kailash-dataflow: "2.14.7"     # == template pin (PyPI-resolvable)
   kailash-kaizen: "2.29.0"       # == template pin (PyPI-resolvable)
 enrichment:
-  uv_sync: no-op                  # pins unchanged from prior 3.26.0 cycle; existing uv.lock already resolves the 2.48.0 pin set. No pin move to re-lock.
-  hooks_resolve: 38/38            # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
+  hooks_resolve: 28/28            # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
   description_label: "(Python)"   # parenthetical matches variant key py (Step 6b)
-template_version: "3.27.0"        # was 3.26.0 (minor: per-redistribution-cycle bump; no SDK pin move)
+  inbox_scaffold: present         # .claude/.proposals/inbox/{README.md,.gitkeep} already present (additive no-op, never-overwrite)
+template_version: "3.27.0"        # UNCHANGED — content-only redistribution (Option A); no per-cycle bump this cascade
 notes:
-  - "F9 Gate-2 re-sync cut from loom@f403a49c (origin/main, authorized source). CWD was moved to a fresh branch at HEAD f403a49c so the un-merged feat/mesh-d6-d7-convergence rule edits (beyond f403a49c) are excluded from this cascade."
-  - "spec-accuracy.md + specs-authority.md ARE in the 16-modified set, but at their f403a49c (origin/main) versions — NOT the un-merged mesh edits; those ride a later sync once merged to main."
-  - "Artifact content delta applied deterministically by the engine (sync-tier-aware --verify CONSISTENT); this marker records the Gate-2 enrichment residue (marker, VERSION, hooks verify). Rule 8 N/A — cc-only-legacy has no derived CLI tree."
+  - "CONTENT-ONLY Gate-2 re-sync cut from loom@8b5b6be1 (origin/main published freshness anchor; local HEAD 9fa936f5 carries un-synced cross-repo authz commits, excluded from this cascade)."
+  - "loom platform semver 2.45.x and all 9 SDK pins held UNCHANGED per co-owner-ratified Option A; only accumulated COC artifact CONTENT (rules/skills/hooks/bin/commands) redistributed. VERSION file version+pins byte-identical to target origin/main (content-only proof)."
+  - "Artifact content delta applied deterministically by the engine (sync-tier-aware --verify CONSISTENT, 1590 in-plan); this marker records the Gate-2 enrichment residue (marker + hooks verify). sync-completeness Rule 8 N/A — cc-only-legacy has no derived CLI tree."

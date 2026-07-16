@@ -52,6 +52,9 @@ import { fileURLToPath } from "node:url";
 import {
   deriveDynamicTokens, walkFiles, readTextOrNull, synthHex, makeScrubber, SCRUB_MODES, assertNoSymlinkEscape,
 } from "./lib/identity-scrub.mjs";
+// clause-e.2 key basenames/suffixes — SAME source the runtime tripwire scans, so the
+// clean-instantiate DELETE fence and the committed-key tripwire never drift (redteam #965 R3).
+import { FORBIDDEN_KEY_BASENAMES, FORBIDDEN_KEY_SUFFIXES } from "./lib/mesh-keys.mjs";
 
 const require = createRequire(import.meta.url);
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -506,6 +509,51 @@ function performClear(root, opts) {
   const publishTooling = path.join(root, "scripts", "publish-to-public.mjs");
   if (existsSync(publishTooling)) { rmSync(publishTooling, { force: true }); done.push("scripts/publish-to-public.mjs → DELETED (loom-only canon-publish tooling)"); }
 
+  // (h) DELETE the mesh LOCAL HANDLE VAULT — the client↔handle DEANONYMIZATION
+  //     map (knowledge-mesh spec 02 clause (e.4)). Disposition: DELETE (not
+  //     neutralize), the same class as journal/ above: the vault is per-ecosystem
+  //     deanonymization data (canon's client↔handle pairs), meaningless AND
+  //     disclosure-critical to a client. A client instantiated from a template
+  //     that carried the vault would inherit canon's FULL client↔handle mapping.
+  //     Keys never live in a file (env/keychain only, clause e.2), so the file is
+  //     the map alone; deleting it removes the deanonymization table wholesale.
+  //     The registry tuples + node records under .claude/mesh/ are HANDLES-ONLY
+  //     (no readable names — they cannot deanonymize) and are left for the
+  //     whole-tree neutralize + assert-zero gate to handle like any other file.
+  //     BASENAME-ANYWHERE walk (redteam #965 R1): a `cp -r`'d template may carry
+  //     the vault at a NON-default nested path (per-level monorepo topology) or
+  //     a rename/backup (handle-vault.json.bak) that an exact-path delete + the
+  //     canon-token assert-zero (blind to client-name content) would BOTH miss,
+  //     letting the client inherit canon's client↔handle map. Delete every
+  //     handle-vault.json* basename anywhere in the tree, case-insensitively.
+  //     KEY MATERIAL (clause e.2) — the higher-value secret — gets the SAME cp -r
+  //     defense on this leg (redteam #965 R3 F-CLEAN-KEY). A `cp -r`'d working tree
+  //     carries gitignored files, so a stray canon `.claude/mesh/k_eco`/`k`/`*.key`
+  //     survives the gitignore commit-fence AND is invisible to the canon-token
+  //     assert-zero (a random-hex key carries no identity token) — the fork would
+  //     inherit canon's content-commitment/minting key. Scoped to a `.claude/mesh/`
+  //     dir (NOT basename-anywhere) to match the gitignore + tripwire scope and
+  //     spare a legit `foo.pem` elsewhere in the fork; the basename/suffix set is
+  //     imported from mesh-keys so it can never drift from the tripwire.
+  const meshDirFrag = `${path.sep}.claude${path.sep}mesh${path.sep}`;
+  let meshVaultDeleted = 0, meshKeyDeleted = 0;
+  walkFiles(root, (f) => {
+    if (f.includes(`${path.sep}.git${path.sep}`)) return; // never touch the .git object store
+    const base = path.basename(f).toLowerCase();
+    if (base.startsWith("handle-vault.json")) {
+      rmSync(f, { force: true }); meshVaultDeleted++;
+      return;
+    }
+    if (
+      f.includes(meshDirFrag) &&
+      (FORBIDDEN_KEY_BASENAMES.has(base) || FORBIDDEN_KEY_SUFFIXES.some((s) => base.endsWith(s)))
+    ) {
+      rmSync(f, { force: true }); meshKeyDeleted++;
+    }
+  });
+  if (meshVaultDeleted) done.push(`mesh handle-vault.json → ${meshVaultDeleted} DELETED (client↔handle deanonymization map, basename-anywhere; spec-02 clause e.4)`);
+  if (meshKeyDeleted) done.push(`mesh key material → ${meshKeyDeleted} DELETED (.claude/mesh/-scoped; a cp -r carries gitignored key files; spec-02 clause e.2)`);
+
   return done;
 }
 
@@ -544,6 +592,26 @@ function neutralizeWholeTree(root, scrubPairs) {
     for (const v of new Set([from, from.toLowerCase(), from.toUpperCase()])) augmented.push([v, to]);
   }
   const scrub = makeScrubber(augmented, { mode: SCRUB_MODES.NEUTRALIZE });
+  // SHAPE-PRESERVE *.test.mjs disclosure fixtures: a second scrubber that applies
+  // the SAME dynamic canon-token pairs but routes the structural operator-home-path
+  // rewrite through a SYNTHETIC-USERNAME ALLOWLIST (identity-scrub.mjs's
+  // SYNTHETIC_FIXTURE_USERS). loom's disclosure TESTS (e.g. sync-from-canon.test.mjs)
+  // plant a SYNTHETIC `/Users/<fixture-user>/...` operator-home shape as a fixture so the REAL
+  // scanner fires and the test verifies the halt path; an unconditional homepath
+  // rewrite would rewrite that fixture to `/Users/<user>/`, which the scanner then
+  // EXCLUDES — silently neutering the disclosure test (a green test that verifies
+  // nothing) in the client fork. The allowlist preserves ONLY recognized synthetic
+  // fixture usernames and STILL rewrites any OTHER operator home — including a REAL
+  // contributor's non-token macOS home — so a real operator-PII home in a *.test.mjs
+  // cannot survive into the client's new ecosystem (the #1141-7 rt1-security leak the
+  // prior blanket skip opened; the SOURCE-mode scanner ALSO excludes *.test.mjs from
+  // every shape, so the homepath rewrite is the only defense for a non-token home).
+  // The dynamic canon-IDENTITY scrub STILL runs on *.test.mjs (a real canon token in
+  // a test file is still neutralized — many loom *.test.mjs carry derived canon tokens
+  // the scrub must clear for a real canon clone to pass; the exact count is runtime-
+  // derived against a live canon clone, not statically knowable here), and assertZero's
+  // canon-token grep still covers *.test.mjs as the fail-closed backstop.
+  const scrubTestFixture = makeScrubber(augmented, { mode: SCRUB_MODES.NEUTRALIZE, preserveSyntheticFixtureHomes: true });
   const ECO_REL = path.join(".claude", "bin", "ecosystem.json");
   let neutralized = 0;
   walkFiles(root, (f) => {
@@ -551,7 +619,10 @@ function neutralizeWholeTree(root, scrubPairs) {
     const rel = path.relative(root, f);
     if (rel === ECO_REL) return; // preserve the ceremony's own placeholder + upstream_canon.url
     const before = readTextOrNull(f); if (before === null) return; // binary → skip (fail-safe)
-    const after = scrub(before);
+    // *.test.mjs → homepath-skipping scrubber (shape-preserve synthetic fixtures);
+    // every other file → full neutralize (real operator homes MUST be rewritten).
+    const isTestFixture = /\.test\.mjs$/.test(path.basename(f));
+    const after = (isTestFixture ? scrubTestFixture : scrub)(before);
     if (after !== before) { writeFileSync(f, after); neutralized++; }
   });
   return neutralized;
@@ -800,7 +871,7 @@ function main() {
   if (!a.apply) {
     const preview = assertZero(root, canonTokens, { scannerPath: a.scannerPath });
     const historyN = gitHistoryCount(root);
-    console.log(`\nDRY RUN — would clear: roster→placeholder · journal/ DELETE · team-memory facts · ecosystem.json→placeholder · tenant-denylist→empty · coordination state · scripts/publish-to-public.mjs DELETE · whole-tree NEUTRALIZE`);
+    console.log(`\nDRY RUN — would clear: roster→placeholder · journal/ DELETE · team-memory facts · ecosystem.json→placeholder · tenant-denylist→empty · coordination state · scripts/publish-to-public.mjs DELETE · mesh handle-vault.json DELETE · whole-tree NEUTRALIZE`);
     console.log(`current tree carries ${preview.hits.length} canon-token occurrence(s) across ${new Set(preview.hits.map((h) => h.split("  ~  ")[0])).size} file(s) (these would be cleared/surfaced).`);
     console.log(`upstream_canon would be set to: ${a.upstreamCanonUrl || "(placeholder)"}`);
     if (historyN !== 0) emitHistoryGuidance(root, historyN, canonTokens, false); // != 0: >0 real history OR -1 errored-unknown -> fail-closed

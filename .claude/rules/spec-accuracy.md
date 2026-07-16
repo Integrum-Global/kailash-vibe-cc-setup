@@ -46,18 +46,25 @@ metric_c, metric_d, metric_e (Phase-2 will wire; scaffold returns mocks).
 
 ### 1a. Runtime-Resolved `kp://` Knowledge-Product Referents Are Exempt From Merge-Time Resolution
 
-A `knowledge-product:` field value that is a `kp://…@version` URN (per `specs-authority.md` Rule 10) is EXEMPT from Rule 1's merge-time `grep` / `ast.parse` / `find` resolution — it names a knowledge-product IDENTITY resolved at RUNTIME in the engine, never a code symbol present in the tree at merge. The exemption is scoped to a runtime-resolved `kp://` referent in a `knowledge-product:` field ONLY: every OTHER citation (file:line, function, class, endpoint, SQL, table, column, env var, config key — AND any non-`kp://` value in a `knowledge-product:` field) still MUST resolve at merge per Rule 1. Treating the exemption as a general "it resolves later" escape for an ordinary code citation is BLOCKED — that is exactly the Phase-2-will-wire-it phantom Rule 1 exists to block.
+A `knowledge-product:` field value that is a `kp://…@version` URN is EXEMPT from Rule 1's merge-time `grep` / `ast.parse` / `find` resolution — it names a knowledge-product IDENTITY resolved at RUNTIME in the engine, never a code symbol present in the tree at merge. **The URN's grammar is NOT restated here: `specs-authority.md` Rule 10 owns the field-type contract (its five invariants), and the mesh identity spec owns the handle-derivation detail Rule 10 references.** This rule owns exactly one thing — the carve-out's SCOPE: it is a runtime-resolved `kp://` referent in a `knowledge-product:` field ONLY. Every OTHER citation (file:line, function, class, endpoint, SQL, table, column, env var, config key — AND any non-`kp://` value in a `knowledge-product:` field) still MUST resolve at merge per Rule 1. Treating the exemption as a general "it resolves later" escape for an ordinary code citation is BLOCKED — that is exactly the Phase-2-will-wire-it phantom Rule 1 exists to block.
 
-```markdown
+```text
 # DO — the kp:// URN is exempt; the code citation beside it still resolves at merge
 
-knowledge-product: kp://use/b3f1c9e2-7a45-4d18-9c60-2e8fb147ad39/churn-features@v3 # runtime-resolved → exempt (Rule 10); `<domain>` is an OPAQUE HANDLE
-scored by `analytics_service.get_metric("churn")` (SUPPORTED_METRICS:235) # still MUST grep-resolve
+knowledge-product: kp://use/<opaque-handle>/churn-features@3
+   (runtime-resolved → exempt; shape per specs-authority.md Rule 10)
+scored by `analytics_service.get_metric("churn")` (SUPPORTED_METRICS:235)
+   (ordinary code citation → still MUST grep-resolve at merge)
 
-# DO NOT — a non-kp:// or ordinary citation smuggled under the exemption
+# DO NOT — a non-kp:// value smuggled under the exemption
 
-knowledge-product: churn_features_table # not a kp:// URN → NOT exempt → must resolve → BLOCKED
-POST /api/v1/churn — backed by an accessor "resolved at runtime" # ordinary citation, not a kp:// referent → BLOCKED
+knowledge-product: churn_features_table
+   (not a kp:// URN → NOT exempt → must resolve → BLOCKED)
+
+# DO NOT — an ordinary citation smuggled under the exemption
+
+POST /api/v1/churn — backed by an accessor "resolved at runtime"
+   (ordinary citation, not a kp:// referent → BLOCKED)
 ```
 
 **BLOCKED rationalizations:**
@@ -256,4 +263,4 @@ Applies to the **Rule 1a** clause (added 2026-07-11, Mesh S0 `/govern` co-owner-
 - **Violation scope:** the Rule 1a runtime-resolved-`kp://`-carve-out clause ONLY (clause-scoped); the pre-existing grandfathered Rules 1–7 + § Exceptions + § MUST NOT stay exempt until each is itself `/codify`-touched.
 - **Origin:** journal/0466 (Mesh S0 `/govern` co-owner-directed origination) + the mesh identity spec `02-knowledge-product-identity.md` § "The URN" (the runtime-resolved URN grammar) + the ratified roadmap `01-wave-roadmap.md` § S0 Value-anchor (FP-6: a product-linked spec is a `spec-accuracy.md` Rule-1 CRITICAL at merge until this carve-out lands — finding origin `01-analysis/08-failure-points-risks.md` § FP-6); paired with `specs-authority.md` Rule 10.
 
-**Length rationale (per `rules/rule-authoring.md` MUST NOT § "Rules longer than 200 lines").** Rule body is ~257 lines, over the 200-line guidance. Named rationale: **spec-accuracy-contract scope** — the rule codifies the complete citation-accuracy + no-split-state contract across its numbered rules (1, 1a, 2–7): every-citation-resolves, the runtime-resolved `kp://` carve-out, no-split-state framings, out-of-scope-is-not-a-gap, work-trackers-outside-specs, incremental-extension workflow, historical-change-logs, and the `/redteam` import-execution sweep — each carrying the DO/DO-NOT + `**Why:**` the meta-rule mandates, plus the canonical 8-field Trust-Posture Wiring the post-cutoff Rule 1a requires. The rule is `priority: 10` + `scope: path-scoped`, so it pays NO baseline-emission cost (loaded only in sessions matching its `paths:` globs) and `rule-authoring.md` Rule 10's proximity-band gate does NOT fire. Splitting the citation-accuracy rules into siblings would fragment the one contract every spec-citation edit consults and force cross-rule lookups. Sibling precedent: `specs-authority.md` (paired) + `artifact-flow.md` + `sync-completeness.md` length rationales.
+**Length rationale (per `rules/rule-authoring.md` MUST NOT § "Rules longer than 200 lines").** Rule body is ~266 lines (per `wc -l`), over the 200-line guidance. Named rationale: **spec-accuracy-contract scope** — the rule codifies the complete citation-accuracy + no-split-state contract across its numbered rules (1, 1a, 2–7): every-citation-resolves, the runtime-resolved `kp://` carve-out, no-split-state framings, out-of-scope-is-not-a-gap, work-trackers-outside-specs, incremental-extension workflow, historical-change-logs, and the `/redteam` import-execution sweep — each carrying the DO/DO-NOT + `**Why:**` the meta-rule mandates, plus the canonical 8-field Trust-Posture Wiring the post-cutoff Rule 1a requires. The rule is `priority: 10` + `scope: path-scoped`, so it pays NO baseline-emission cost (loaded only in sessions matching its `paths:` globs) and `rule-authoring.md` Rule 10's proximity-band gate does NOT fire. Splitting the citation-accuracy rules into siblings would fragment the one contract every spec-citation edit consults and force cross-rule lookups. Sibling precedent: `specs-authority.md` (paired) + `artifact-flow.md` + `sync-completeness.md` length rationales.

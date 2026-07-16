@@ -226,6 +226,56 @@ export function makeHomepathRe() {
 }
 
 /**
+ * SYNTHETIC operator-home usernames that disclosure-test FIXTURES legitimately
+ * plant in `*.test.mjs` so the fork's OWN disclosure tests still fire the scanner
+ * after clean-instantiate. Used ONLY by the `*.test.mjs` homepath carve-out
+ * (`makeScrubber({ preserveSyntheticFixtureHomes: true })`): a `/Users/<name>/`
+ * (or `/home/<name>/`) shape in a test file is PRESERVED iff `<name>`
+ * (case-insensitive) is in this set; EVERY OTHER username — including a REAL
+ * contributor's macOS home whose name is NOT a roster token — is STILL rewritten
+ * to the `/Users/<user>/` placeholder.
+ *
+ * This is the leak-SAFE form of the #1141-7 fixture carve-out (the prior binary
+ * "skip ALL homepath rewriting for *.test.mjs" let a non-token real operator home
+ * survive into the client's new ecosystem — an operator-PII-across-ecosystem leak
+ * the structural scanner also misses, because clean-instantiate runs it in SOURCE
+ * mode where scan-synced-disclosure.mjs excludes *.test.mjs from ALL shapes). The
+ * failure direction is SAFE both ways: an unknown username → rewritten (NO leak);
+ * a genuinely-synthetic fixture name missing here → over-neutered (a test-QUALITY
+ * issue, never a disclosure leak).
+ *
+ * Membership is derived from the usernames loom's own test files actually use
+ * (grep the `/(Users|home)/<name>/` shape across the `.test.mjs` files) PLUS the
+ * canonical synthetic placeholders. Deliberately EXCLUDED: `esperie` (the REAL
+ * maintainer home — a
+ * roster token the dynamic scrub already rewrites to `maintainer`, which this pass
+ * then normalizes to `<user>`, defense-in-depth) and `realclient`/`realcontributor`
+ * (the counter-example REAL homes the regression tests assert are rewritten).
+ * `runner`/`example`/`<user>` are already excluded by makeHomepathRe's lookahead,
+ * so they never reach this set.
+ */
+export const SYNTHETIC_FIXTURE_USERS = new Set([
+  "jdoe",         // sync-from-canon.test.mjs disclosure fixture (the #1141-7 motivating case)
+  "jane",         // "Jane Doe" placeholder (sibling of jdoe)
+  "alice",        // canonical Alice/Bob placeholder pair
+  "bob",          // canonical Alice/Bob placeholder pair
+  "op",           // generic synthetic operator, widely used in coordination-substrate fixtures
+  "someoperator", // explicitly-synthetic operator name
+  "fakeuser",     // explicitly-synthetic ("fake" in the name)
+  "acme",         // canonical ACME synthetic placeholder
+  "x",            // single-char synthetic operator stub
+  // NOTE (rt2-security R2 INCREMENTAL): `me` / `user` / `test` / `someone` were
+  // DELIBERATELY REMOVED — they are the most plausibly-REAL macOS usernames (a real
+  // contributor could literally be named `test`/`user`), are used by ZERO loom
+  // *.test.mjs disclosure fixture (grep-verified), and `me` is moot anyway
+  // (scan-synced-disclosure already treats `/Users/me/` as a benign placeholder).
+  // Removing them shrinks the preserve-set to only distinctly-synthetic names,
+  // minimizing the real-username-collision surface at zero fixture cost. A future
+  // synthetic fixture username not in this set fails SAFE (rewritten, no leak) — add
+  // it here with a comment only if a disclosure fixture genuinely needs it preserved.
+]);
+
+/**
  * The two disclosure-scrub APPLICATION modes. FAIL-CLOSED: makeScrubber throws on
  * any other value (an unknown/missing mode is never a silent passthrough).
  *
@@ -276,11 +326,30 @@ function isNeutralizeSentinel(value) {
  * `lastIndex`; `.replace()` resets it, but a shared instance would still race a
  * concurrent gate `.exec()` — makeHomepathRe's contract).
  *
+ * `preserveSyntheticFixtureHomes` (default false) switches the structural
+ * operator-home-path rewrite from an UNCONDITIONAL rewrite to a SYNTHETIC-USERNAME
+ * ALLOWLIST callback: a `/Users/<name>/` (or `/home/<name>/`) shape is PRESERVED
+ * iff `<name>` ∈ `SYNTHETIC_FIXTURE_USERS`, and EVERY OTHER username — including a
+ * REAL contributor's macOS home — is STILL rewritten to `/Users/<user>/`. It
+ * exists for the clean-instantiate whole-tree neutralize's `*.test.mjs` carve-out:
+ * disclosure-test fixtures LEGITIMATELY plant SYNTHETIC operator-home shapes (e.g.
+ * a `/Users/<fixture-user>/...` path under a `SYNTHETIC_FIXTURE_USERS` name) the fork's
+ * own disclosure tests must trip against — an
+ * unconditional rewrite would neuter them into `/Users/<user>/` (a green test that
+ * verifies nothing). The narrow allowlist keeps THOSE intact while still closing
+ * the operator-PII-across-ecosystem leak a blanket `*.test.mjs` skip opens (a REAL
+ * non-token contributor home surviving into the client's new ecosystem — #1141-7
+ * rt1-security). The dynamic canon-IDENTITY scrub is NEVER skipped: a real canon
+ * token in a test file is still neutralized (and clean-instantiate's assert-zero
+ * canon-token grep still covers `*.test.mjs` as the fail-closed backstop). The
+ * default path (unconditional rewrite) stays byte-identical, so publish-fence
+ * callers are unaffected.
+ *
  * @param {[string,string][]} dynScrubPairs  the dynamic pairs (deriveDynamicTokens().scrub)
- * @param {{ mode: string, staticScrub?: [string,string][] }} opts
+ * @param {{ mode: string, staticScrub?: [string,string][], preserveSyntheticFixtureHomes?: boolean }} opts
  * @returns {(text: string) => string}
  */
-export function makeScrubber(dynScrubPairs, { mode, staticScrub = [] } = {}) {
+export function makeScrubber(dynScrubPairs, { mode, staticScrub = [], preserveSyntheticFixtureHomes = false } = {}) {
   if (mode !== SCRUB_MODES.NEUTRALIZE && mode !== SCRUB_MODES.SUBSTITUTE) {
     throw new Error(
       `identity-scrub makeScrubber: unknown/missing mode ${JSON.stringify(mode)} ` +
@@ -304,10 +373,19 @@ export function makeScrubber(dynScrubPairs, { mode, staticScrub = [] } = {}) {
     .sort((a, b) => b[0].length - a[0].length)
     .filter(([f]) => (_seen.has(f) ? false : (_seen.add(f), true)));
   const homepathRe = makeHomepathRe(); // fresh per scrubber (g-flag lastIndex state)
+  // Default: UNCONDITIONAL rewrite (byte-identical to the pre-carve-out behavior).
+  // *.test.mjs carve-out: a REPLACE-CALLBACK preserves a match ONLY when its
+  // captured username (group 2) is a recognized SYNTHETIC fixture user; any other
+  // home — incl. a REAL contributor's — is still rewritten to `/<kind>/<user>`,
+  // closing the non-token-home leak (#1141-7 rt1-security).
+  const homepathReplace = preserveSyntheticFixtureHomes
+    ? (full, kind, username) =>
+        SYNTHETIC_FIXTURE_USERS.has(String(username).toLowerCase()) ? full : `/${kind}/<user>`
+    : "/$1/<user>";
   return (text) => {
     let txt = text;
     for (const [from, to] of pairs) { if (txt.includes(from)) txt = txt.split(from).join(to); }
-    return txt.replace(homepathRe, "/$1/<user>"); // structural operator-home-path scrub
+    return txt.replace(homepathRe, homepathReplace); // structural operator-home-path scrub
   };
 }
 
