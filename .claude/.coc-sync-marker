@@ -1,29 +1,30 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-16T16:55:07Z
+timestamp: 2026-07-18T12:25:26Z
 source: loom/.claude
-loom_sha: 8b5b6be15d3b6310784310b59a87a65542013412
-loom_sha_short: 8b5b6be1
+loom_sha: 4a3ec312c1ac34bbe2348db174ef9f5c17b77d48
+loom_sha_short: 4a3ec312
 variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: loom f403a49c->8b5b6be1 CONTENT-ONLY redistribution (Gate-2 re-sync, ~2-3 weeks accumulated COC artifact updates). Engine-applied 97-file artifact delta (sync-tier-aware --verify CONSISTENT, 1590 in-plan). CONTENT-ONLY mode (co-owner-ratified Option A) — template_version UNCHANGED at 3.27.0; all 9 SDK pins UNCHANGED at 2.48.0 set; NO version or pin move this cycle.
+headline: loom f403a49c->4a3ec312 redistribution (py CC-only legacy) — Gate-2 CANARY re-sync. Engine-applied 29-file artifact delta (sync-tier-aware --verify CONSISTENT, 1605 in-plan). Triad codification (agents/wave-loop + parallel-dispatch-default/redteam-dispatch-evidence-gate/closure-parity skills) + Item-3 (redteam/sweep-completeness/product-completion-first + dual-surface-redteam skill) + accumulated rules/hooks/bin/guides refreshes. VERSION bumped 3.27.0->3.28.0 (co-owner-approved option a); all 9 SDK pins VERIFIED-CURRENT and HELD at the 2.48.0 set.
 distribution:
-  mode: content-only            # co-owner-ratified Option A — no template semver bump, no SDK pin refresh
+  mode: version-bump+content     # co-owner-approved option (a) — template semver MINOR bump; SDK pins held (verified-current)
   engine: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
   tool: sync-gate2-worktree.mjs --lane use --target claude-py (wraps sync-tier-aware --target py)
-  verify: engine --verify CONSISTENT (1590 in-plan files matched; no obsoleted path present)
+  verify: engine --verify CONSISTENT (1605 in-plan files matched; no obsoleted path present)
 stats:
-  changed_files_in_worktree: 97  # engine-applied artifact delta (.claude/ + .gitignore); enrichment adds this marker
-  engine_manifest:
-    added: 26                     # incl. mesh-* bin tooling, cross-repo-authorize bin+command, conformance-walk rule+skill, audit-fixtures
-    modified: 39                  # rules/hooks/bin/commands/skills/.gitignore content refreshes
-    deleted: 32                   # retired fleet-* / lint-prose-drift / loom-links / sync-* bin + fixtures (loom-local, purged)
+  engine_changed_count: 29       # tool-reported (directory-collapsed) engine artifact delta
+  engine_manifest:               # file-level, untracked expanded
+    added: 15                     # bin/lib/local-rules.mjs; audit-fixtures/adjacency-domain/** (9); guides/rule-extracts/artifact-flow.md; skills dual-surface-redteam/parallel-dispatch-default/self-referential-allowlist-provenance/specialist-delegation-syntax
+    modified: 22                  # rules agents/artifact-flow/product-completion-first/self-referential-codify/sweep-completeness/testing/wave-loop/zero-tolerance; commands autonomize/redteam/wrapup; bin emit/mesh-observability-console/validate-emit; hooks genesis-anchor-guard/lib adjacency/lib version-utils; guides/rule-extracts agents/cross-sdk-inspection/testing; skills closure-parity-specialist-discipline/redteam-dispatch-evidence-gate
+    deleted: 0                     # no obsoleted path present (purged: 0)
   baselines_emitted:
     cc: 0                         # CLAUDE.md preserved (template-owned), not emitted
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-sdk_pin_changes: none-this-cycle   # CONTENT-ONLY mode — all 9 pins held at 2.48.0 set (unchanged from prior 3.27.0 cycle); no SDK bump distributed this cascade
-sdk_packages:                      # == pyproject.toml pins (step-3 parity) — UNCHANGED
+sdk_pin_changes: none-this-cycle   # VERIFIED-CURRENT, HELD at 2.48.0 set — see reason below
+sdk_pin_hold_reason: "No authoritative newer SDK release exists on disk to anchor a bump to — loom is type=coc-source (carries no pin source) and the BUILD kailash-py repo is not resolvable from this worktree. Fabricating a bump would break pip install (zero-tolerance). This HOLD is DELIBERATE, co-owner-approved option (a), NOT an omission — next cycle MUST NOT read the hold as a skipped step."
+sdk_packages:                      # == pyproject.toml pins (step-3 parity) — UNCHANGED, verified-current
   kailash: "2.48.0"
   kailash-dataflow: "2.14.7"
   kailash-nexus: "2.11.0"
@@ -33,16 +34,13 @@ sdk_packages:                      # == pyproject.toml pins (step-3 parity) — 
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
   kaizen-agents: "0.9.11"
-build_source_of_truth:            # BUILD kailash-py current (unchanged since 3.27.0 cycle)
-  kailash: "2.48.0"               # == template pin (PyPI-resolvable)
-  kailash-dataflow: "2.14.7"     # == template pin (PyPI-resolvable)
-  kailash-kaizen: "2.29.0"       # == template pin (PyPI-resolvable)
 enrichment:
-  hooks_resolve: 28/28            # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
+  version_bump: "3.27.0->3.28.0"  # MINOR — new COC content this cycle (Triad + Item-3)
+  hooks_resolve: verified         # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
   description_label: "(Python)"   # parenthetical matches variant key py (Step 6b)
-  inbox_scaffold: present         # .claude/.proposals/inbox/{README.md,.gitkeep} already present (additive no-op, never-overwrite)
-template_version: "3.27.0"        # UNCHANGED — content-only redistribution (Option A); no per-cycle bump this cascade
+template_version: "3.28.0"        # BUMPED — co-owner-approved option (a)
 notes:
-  - "CONTENT-ONLY Gate-2 re-sync cut from loom@8b5b6be1 (origin/main published freshness anchor; local HEAD 9fa936f5 carries un-synced cross-repo authz commits, excluded from this cascade)."
-  - "loom platform semver 2.45.x and all 9 SDK pins held UNCHANGED per co-owner-ratified Option A; only accumulated COC artifact CONTENT (rules/skills/hooks/bin/commands) redistributed. VERSION file version+pins byte-identical to target origin/main (content-only proof)."
-  - "Artifact content delta applied deterministically by the engine (sync-tier-aware --verify CONSISTENT, 1590 in-plan); this marker records the Gate-2 enrichment residue (marker + hooks verify). sync-completeness Rule 8 N/A — cc-only-legacy has no derived CLI tree."
+  - "Gate-2 CANARY re-sync cut through the worktree-from-remote-main mechanism (base target origin/main 17ba3a8e). Distribution content == loom main 4a3ec312."
+  - "loom source produced from worktree HEAD 7116eb91 on branch fix/wave-c-vault-spec-accuracy-m12-reconcile; that branch is MERGED to loom main as PR #1217 (4a3ec312). The ONLY .claude/ delta main..HEAD is the loom-local cross-repo-authz receipt (excluded from distribution — confirmed absent from target). Distributable artifact content is therefore identical to loom main 4a3ec312."
+  - "co-owner-approved option (a): VERSION MINOR bump + SDK pins held-at-current. Content delta is COC governance/tooling only (Triad codification + Item-3); no SDK-release component. Marker+VERSION are the Gate-2 enrichment residue over the engine-applied delta. sync-completeness Rule 8 N/A — cc-only-legacy has no derived CLI tree."
+  - "CANARY: PR opened --no-merge; merge + fan-out to remaining targets gated by team-lead."
