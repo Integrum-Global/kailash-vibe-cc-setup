@@ -1,5 +1,5 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-18T12:25:26Z
+timestamp: 2026-07-19T00:00:00Z
 source: loom/.claude
 loom_sha: 4a3ec312c1ac34bbe2348db174ef9f5c17b77d48
 loom_sha_short: 4a3ec312
@@ -7,40 +7,47 @@ variant: py
 template_type: cc-only-legacy
 clis: [claude]
 visibility: public
-headline: loom f403a49c->4a3ec312 redistribution (py CC-only legacy) — Gate-2 CANARY re-sync. Engine-applied 29-file artifact delta (sync-tier-aware --verify CONSISTENT, 1605 in-plan). Triad codification (agents/wave-loop + parallel-dispatch-default/redteam-dispatch-evidence-gate/closure-parity skills) + Item-3 (redteam/sweep-completeness/product-completion-first + dual-surface-redteam skill) + accumulated rules/hooks/bin/guides refreshes. VERSION bumped 3.27.0->3.28.0 (co-owner-approved option a); all 9 SDK pins VERIFIED-CURRENT and HELD at the 2.48.0 set.
+headline: SDK pin-refresh (VERSION 3.28.0->3.28.1, PATCH) — corrects PR #105's stale-pin HOLD. #105 held all pins at the 2.48.0 set on a FALSE "BUILD not resolvable" premise; this cycle bumps to authoritative-current, verified against BUILD kailash-py on-disk (2.54.0) + PyPI-latest. 7 pins bumped, 2 held (already latest). COC content UNCHANGED at loom 4a3ec312 (identical to #105) — this is a pin-only correction, not a content redistribution.
 distribution:
-  mode: version-bump+content     # co-owner-approved option (a) — template semver MINOR bump; SDK pins held (verified-current)
-  engine: engine-applied         # deterministic sync-tier-aware apply + --verify ran BEFORE this enrichment step
+  mode: pin-refresh              # SDK pins only; no COC content change (loom_sha held at 4a3ec312)
+  engine: engine-applied         # sync-gate2-worktree staged from target origin/main b2b6cb9e; content verified CONSISTENT vs loom 4a3ec312
   tool: sync-gate2-worktree.mjs --lane use --target claude-py (wraps sync-tier-aware --target py)
-  verify: engine --verify CONSISTENT (1605 in-plan files matched; no obsoleted path present)
+  verify: engine --verify CONSISTENT (1609 in-plan files matched; no obsoleted path present); tracked delta = pyproject.toml + uv.lock only
 stats:
-  engine_changed_count: 29       # tool-reported (directory-collapsed) engine artifact delta
-  engine_manifest:               # file-level, untracked expanded
-    added: 15                     # bin/lib/local-rules.mjs; audit-fixtures/adjacency-domain/** (9); guides/rule-extracts/artifact-flow.md; skills dual-surface-redteam/parallel-dispatch-default/self-referential-allowlist-provenance/specialist-delegation-syntax
-    modified: 22                  # rules agents/artifact-flow/product-completion-first/self-referential-codify/sweep-completeness/testing/wave-loop/zero-tolerance; commands autonomize/redteam/wrapup; bin emit/mesh-observability-console/validate-emit; hooks genesis-anchor-guard/lib adjacency/lib version-utils; guides/rule-extracts agents/cross-sdk-inspection/testing; skills closure-parity-specialist-discipline/redteam-dispatch-evidence-gate
-    deleted: 0                     # no obsoleted path present (purged: 0)
+  engine_changed_count: 0        # no COC artifact change this cycle — content identical to #105 (loom 4a3ec312)
+  content_delta_note: "loom canonical main (40cf2e6c) has drifted 4 files ahead of #105's source (4a3ec312) — the loom#1209 W1-b artifact-activation hooks (emit-artifact-activation{,-session}.js + 2 libs). DELIBERATELY EXCLUDED from this pin-only cycle: they are a CONTENT change needing settings.json registration to not ship inert (Step 6c/8). They land in the next real content sync. loom_sha HELD at 4a3ec312 to keep content == #105."
   baselines_emitted:
     cc: 0                         # CLAUDE.md preserved (template-owned), not emitted
   preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-sdk_pin_changes: none-this-cycle   # VERIFIED-CURRENT, HELD at 2.48.0 set — see reason below
-sdk_pin_hold_reason: "No authoritative newer SDK release exists on disk to anchor a bump to — loom is type=coc-source (carries no pin source) and the BUILD kailash-py repo is not resolvable from this worktree. Fabricating a bump would break pip install (zero-tolerance). This HOLD is DELIBERATE, co-owner-approved option (a), NOT an omission — next cycle MUST NOT read the hold as a skipped step."
-sdk_packages:                      # == pyproject.toml pins (step-3 parity) — UNCHANGED, verified-current
-  kailash: "2.48.0"
-  kailash-dataflow: "2.14.7"
-  kailash-nexus: "2.11.0"
-  kailash-kaizen: "2.29.0"
-  kailash-pact: "0.14.3"
-  kailash-mcp: "0.2.15"
+sdk_pin_changes:                   # 7 bumped to PyPI-latest (evidence-backed), 2 held (already latest)
+  kailash: "2.48.0 -> 2.54.0"      # BUILD kailash-py on-disk pyproject = 2.54.0; PyPI-latest 2.54.0
+  kailash-mcp: "0.2.15 -> 0.4.0"   # PyPI-latest 0.4.0
+  kailash-nexus: "2.11.0 -> 2.12.0" # PyPI-latest 2.12.0
+  kailash-dataflow: "2.14.7 -> 2.18.0" # PyPI-latest 2.18.0
+  kailash-kaizen: "2.29.0 -> 2.35.0" # PyPI-latest 2.35.0
+  kailash-pact: "0.14.3 -> 0.15.0" # PyPI-latest 0.15.0
+  kaizen-agents: "0.9.11 -> 0.10.0" # PyPI-latest 0.10.0
+  kailash-ml: "2.2.2 (held)"       # already PyPI-latest (HTTP 200 verified)
+  kailash-align: "0.7.4 (held)"    # already PyPI-latest (HTTP 200 verified)
+sdk_pin_evidence: "kailash 2.54.0 confirmed on BUILD kailash-py on-disk pyproject.toml (matches PyPI); all 9 packages queried live against pypi.org/pypi/<pkg>/json (kaizen-agents is the real package name — kailash-kaizen-agents is a 404). uv lock exit 0 clean, resolved 298 packages, updated exactly the 7 bumped pins."
+sdk_packages:                      # == pyproject.toml pins (step-3 parity) — REFRESHED to PyPI-latest
+  kailash: "2.54.0"
+  kailash-dataflow: "2.18.0"
+  kailash-nexus: "2.12.0"
+  kailash-kaizen: "2.35.0"
+  kailash-pact: "0.15.0"
+  kailash-mcp: "0.4.0"
   kailash-ml: "2.2.2"
   kailash-align: "0.7.4"
-  kaizen-agents: "0.9.11"
+  kaizen-agents: "0.10.0"
 enrichment:
-  version_bump: "3.27.0->3.28.0"  # MINOR — new COC content this cycle (Triad + Item-3)
+  version_bump: "3.28.0->3.28.1"  # PATCH — pin-only correction, no COC content change
+  install_verify: "uv lock exit 0 clean (298 pkgs resolved; updated kailash/dataflow/kaizen/mcp/nexus/pact/kaizen-agents)"
   hooks_resolve: verified         # all settings.json hook .js scripts present on disk; 0 scripts/hooks refs; settings.json PII-clean (0 /Users|/home tokens)
   description_label: "(Python)"   # parenthetical matches variant key py (Step 6b)
-template_version: "3.28.0"        # BUMPED — co-owner-approved option (a)
+template_version: "3.28.1"        # BUMPED — PATCH (pin-refresh)
 notes:
-  - "Gate-2 CANARY re-sync cut through the worktree-from-remote-main mechanism (base target origin/main 17ba3a8e). Distribution content == loom main 4a3ec312."
-  - "loom source produced from worktree HEAD 7116eb91 on branch fix/wave-c-vault-spec-accuracy-m12-reconcile; that branch is MERGED to loom main as PR #1217 (4a3ec312). The ONLY .claude/ delta main..HEAD is the loom-local cross-repo-authz receipt (excluded from distribution — confirmed absent from target). Distributable artifact content is therefore identical to loom main 4a3ec312."
-  - "co-owner-approved option (a): VERSION MINOR bump + SDK pins held-at-current. Content delta is COC governance/tooling only (Triad codification + Item-3); no SDK-release component. Marker+VERSION are the Gate-2 enrichment residue over the engine-applied delta. sync-completeness Rule 8 N/A — cc-only-legacy has no derived CLI tree."
-  - "CANARY: PR opened --no-merge; merge + fan-out to remaining targets gated by team-lead."
+  - "PIN-REFRESH correcting PR #105's stale hold. #105 (VERSION 3.28.0) held all pins at 2.48.0 on a FALSE 'BUILD kailash-py not resolvable' premise. Authoritative source-of-truth reconfirmed this cycle: BUILD kailash-py on-disk pyproject = 2.54.0 (matches PyPI); sub-packages bumped to PyPI-latest."
+  - "requirements-coc*.txt dev-container IMAGE pins (kailash 2.29.4 etc.) left UNTOUCHED — separate loom dev-container staleness, out of pyproject/VERSION scope; flagged to team-lead for a separate image-pin pass."
+  - "loom_sha HELD at 4a3ec312 (== #105 content). Canonical loom main is 40cf2e6c but its only .claude/ drift vs 4a3ec312 (the loom#1209 W1-b artifact-activation hooks) was deliberately excluded — a content change for the next content sync, not this pin correction."
+  - "CANARY: PR opened --no-merge; merge + fan-out to remaining targets gated by team-lead. sync-completeness Rule 8 N/A — cc-only-legacy has no derived CLI tree."
