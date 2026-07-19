@@ -1,14 +1,14 @@
 # loom dev-container distribution source (py) — generated INTO consumer templates by /sync-to-use; do not hand-edit the consumer copy. Registry host/org are ecosystem-relative, substituted at /sync-to-use distribution.
-# Kailash COC baked framework set — template-owned, regenerated on /sync.
+# Kailash COC baked framework set — template-owned. SDK pins are carried byte-for-byte at /sync and refreshed via a separate directed pin pass (NOT regenerated automatically on sync; emit-dev-container.mjs substitutes only the registry host/org tokens).
 # Lighter five frameworks + hook formatters. ML/Align (torch-class, multi-GB) are
 # OPT-IN via requirements-coc-ml.txt (compose `ml` profile) per plan §0 decision 1.
-# Pins resolved 2026-06-12. Implements specs/dev-container-image.md §5.
+# Pins resolved 2026-06-23 (PyPI-verified latest). Implements specs/dev-container-image.md §5.
 # (Top-level exact pins; --generate-hashes supply-chain lock is the hardening follow-up
 #  noted in the M1 verification record.)
-kailash==2.29.4
-kailash-dataflow==2.11.3
-kailash-nexus==2.9.1
-kailash-kaizen==2.27.0
-kailash-pact==0.12.0
+kailash==2.44.1
+kailash-dataflow==2.12.0
+kailash-nexus==2.11.0
+kailash-kaizen==2.28.0
+kailash-pact==0.14.1
 ruff==0.15.14
 black==26.5.1
