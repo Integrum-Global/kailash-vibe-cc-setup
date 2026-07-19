@@ -1,8 +1,8 @@
 # loom dev-container distribution source (py) — generated INTO consumer templates by /sync-to-use; do not hand-edit the consumer copy. Registry host/org are ecosystem-relative, substituted at /sync-to-use distribution.
-# Kailash COC OPT-IN ML/Align framework set — template-owned, regenerated on /sync.
+# Kailash COC OPT-IN ML/Align framework set — template-owned. SDK pins are carried byte-for-byte at /sync and refreshed via a separate directed pin pass (NOT regenerated automatically on sync; emit-dev-container.mjs substitutes only the registry host/org tokens).
 # Torch-class, multi-GB. NOT in the default image (plan §0 decision 1). Installed only
 # via the compose `ml` profile / `postCreate.sh --ml`. Implements specs/dev-container-image.md §5.
-# Pins resolved 2026-06-13 (current latest; spec §5 pins no version). Install into
+# Pins resolved 2026-06-23 (PyPI-verified latest; spec §5 pins no version). Install into
 # the SAME shared /opt/venv (no --system). Container-build-verified before commit.
-kailash-ml==2.2.0
+kailash-ml==2.2.1
 kailash-align==0.7.2
