@@ -140,6 +140,11 @@ const { canonicalSerialize } = _require("../hooks/lib/coc-sign.js");
 // the check SKIPs when validate-emit is pointed at a different root.
 import { emitCoc } from "./emit-coc.mjs";
 import { REPO as EMIT_REPO } from "./emit-cli-artifacts.mjs";
+// settings.json deny-rule FORM gate — loom's own settings.json (and any
+// to-be-emitted one) MUST NOT carry a Write()/NotebookEdit() permissions.deny
+// entry: CC no longer matches that form, so it ships an inert gate. The same
+// deterministic transform the sync handlers apply is the detector here.
+import { reconcileDenyArray } from "./reconcile-settings-deny.mjs";
 // #825 Wave-2 Shard-03 — the community-completeness gate reads the positive
 // reference-primitive floor and re-verifies each is IN the community projection.
 // F1030d (#1051): these two libs are loom_only (they do NOT ship — #825 edition
@@ -250,6 +255,7 @@ const CHECK_IDS = [
   "gemini-settings-schema",
   "operator-ref-credential-separation",
   "signing-model-key-separation",
+  "settings-deny-rule-form",
 ];
 
 const STATUS = {
@@ -4347,6 +4353,61 @@ function checkGeminiSettingsSchema(root) {
   return { id, source_rule, results: [{ artifact: tag, status: STATUS.PASS, detail: "no `$`-prefixed keys" }] };
 }
 
+// ── CHECK — settings.json deny-rule FORM (Write/NotebookEdit → Edit) ──────────
+// Claude Code no longer matches `Write(<path>)` / `NotebookEdit(<path>)`
+// permission-DENY entries — only `Edit(<path>)` covers all file-editing tools.
+// A settings.json still carrying the stale form ships an inert gate (CC init
+// error + un-denied state files) to every inheriting consumer. loom's OWN
+// settings.json (and any to-be-emitted one) MUST therefore be in the canonical
+// Edit() form BEFORE emit, so a regression cannot re-leak the class the
+// `/sync-to-use` + `/sync-from-template` reconciler steps were added to close.
+// The detector is the SAME deterministic transform those handlers apply
+// (`reconcileDenyArray`): any entry it would rewrite is a FAIL here.
+function checkSettingsDenyRuleForm(root) {
+  const id = "settings-deny-rule-form";
+  const source_rule =
+    "settings.json permissions.deny MUST use the Edit(<path>) matcher form; CC no longer matches Write()/NotebookEdit() deny entries (reconcile-settings-deny.mjs; coc-sync.md Step 6d + commands/sync-from-template.md)";
+  const tag = ".claude/settings.json";
+  const p = join(root, ".claude", "settings.json");
+  if (!existsSync(p)) {
+    return { id, source_rule, results: [{ artifact: tag, status: STATUS.SKIP, detail: "no settings.json at this root" }] };
+  }
+  const text = safeRead(p);
+  if (text === null) {
+    return { id, source_rule, results: [{ artifact: tag, status: STATUS.FAIL, detail: "unreadable or exceeds the size cap" }] };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return { id, source_rule, results: [{ artifact: tag, status: STATUS.FAIL, detail: `does not parse as JSON: ${e.message}` }] };
+  }
+  const deny = parsed?.permissions?.deny;
+  if (!Array.isArray(deny)) {
+    return { id, source_rule, results: [{ artifact: tag, status: STATUS.PASS, detail: "no permissions.deny array" }] };
+  }
+  // Gate on `changed` — the SAME "would --write mutate this?" signal the CLI
+  // uses — so the emit gate and the reconciler never disagree (a dedup-only
+  // difference has empty `offending` but still WOULD change on --write).
+  const { changed, offending, removed } = reconcileDenyArray(deny);
+  if (changed) {
+    return {
+      id,
+      source_rule,
+      results: [{
+        artifact: tag,
+        status: STATUS.FAIL,
+        detail: `permissions.deny is not canonical — ${offending.length} stale Write()/NotebookEdit() matcher(s) CC no longer honors${
+          offending.length ? ` (${JSON.stringify(offending)})` : ""
+        } + ${removed.length} collapsible duplicate(s)${
+          removed.length ? ` (${JSON.stringify(removed)})` : ""
+        }. Run \`node .claude/bin/reconcile-settings-deny.mjs --write .claude/settings.json\`.`,
+      }],
+    };
+  }
+  return { id, source_rule, results: [{ artifact: tag, status: STATUS.PASS, detail: "permissions.deny uses the canonical Edit() matcher form" }] };
+}
+
 // #771: every top-level .claude/hooks/*.js MUST be either registered in
 // .claude/settings.json OR carry an `@settings-registration:` header marker
 // documenting how it is invoked OUTSIDE settings.json (git-hook, optional
@@ -4518,6 +4579,7 @@ const CHECK_FNS = {
   "gemini-settings-schema": checkGeminiSettingsSchema,
   "operator-ref-credential-separation": checkOperatorRefCredentialSeparation,
   "signing-model-key-separation": checkSigningModelKeySeparation,
+  "settings-deny-rule-form": checkSettingsDenyRuleForm,
 };
 
 function runChecks(root, only, opts) {

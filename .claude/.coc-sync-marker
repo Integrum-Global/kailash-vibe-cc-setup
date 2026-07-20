@@ -1,84 +1,12 @@
-# COC Sync Marker — kailash-coc-claude-py (py lane, cc-only-legacy)
-timestamp: 2026-07-19T11:42:22Z
+# COC Sync Marker — kailash-coc-claude-py (py lane, CC-only-legacy)
+timestamp: 2026-07-20T14:44:29Z
 source: loom/.claude
-loom_sha: 4cb1e6d9165fde252880bde93902dde568fa25c3
-loom_sha_short: 4cb1e6d9
+loom_sha: c3791c19ef447d7fd50704a7323b449bc1543ec4
 variant: py
-template_type: cc-only-legacy
-clis: [claude]
 visibility: public
-headline: loom@4a3ec312->4cb1e6d9 redistribution (VERSION 3.28.1->3.29.0, MINOR — content + pin refresh). Engine-applied 28-file artifact delta (11 added, 17 modified); SDK pins advanced to current BUILD kailash-py ground truth (root 2.55.0), tracking PyPI-resolvable latest. 4 pins bumped (kailash/nexus/kaizen/kaizen-agents), 5 held (already PyPI-current). The 2.48.0-set outlier flagged in session notes was already reconciled upstream (PR #105/#106 → 2.54.0 set); this cycle advances to 2.55.0.
-distribution:
-  mode: content+pin-refresh       # 28-file engine content delta + SDK pin advance
-  engine: engine-applied          # sync-gate2-worktree staged from target origin/main e66cfa36; variant overlays + obsoleted purge applied
-  tool: sync-gate2-worktree.mjs --lane use --target claude-py (wraps sync-tier-aware --target py)
-  base_sha: e66cfa366a1c1b80475ea67980c877cf5baefb83
+clis: ["claude"]
 stats:
-  engine_changed_count: 28        # 11 added, 17 modified (variant overlays + obsoleted purge)
-  baselines_emitted:
-    cc: 0                         # CLAUDE.md preserved (template-owned), not emitted
-  preserved: [CLAUDE.md, .proposals/, learning/, settings.local.json, docs/, journal/]
-engine_delta:
-  added:                          # 11 (dirs + files)
-    - .claude/audit-fixtures/coc-eval-all/
-    - .claude/audit-fixtures/coc-eval-core/
-    - .claude/audit-fixtures/scan-synced-disclosure/operator-local-md-destination-flip/
-    - .claude/guides/rule-extracts/handoff-completion.md
-    - .claude/rules/command-skill-parity.md
-    - .claude/rules/handoff-completion.md
-    - .claude/rules/issue-triage-routing.md
-    - .claude/rules/orchestration-launch-ledger.md
-    - .claude/skills/18-security-patterns/frontmatter-directive-trust-surface.md
-    - .claude/skills/18-security-patterns/path-containment.md
-    - .claude/skills/issue-triage-routing/
-  modified:                       # 17
-    - .claude/audit-fixtures/scan-synced-disclosure/run.mjs
-    - .claude/bin/scan-synced-disclosure.mjs
-    - .claude/bin/validate-emit.mjs
-    - .claude/commands/certify.md
-    - .claude/commands/claim.md
-    - .claude/commands/enroll.md
-    - .claude/commands/onboard.md
-    - .claude/commands/whoami.md
-    - .claude/rules/cc-artifacts.md
-    - .claude/rules/enrollment-operations.md
-    - .claude/rules/security.md
-    - .claude/rules/self-referential-codify.md
-    - .claude/skills/41-onboard/SKILL.md
-    - .claude/skills/42-certify/SKILL.md
-    - .claude/skills/43-ecosystem-init/SKILL.md
-    - .claude/skills/44-enroll/SKILL.md
-    - .gitignore
-sdk_pin_changes:                   # 4 bumped to PyPI-resolvable latest, 5 held (already latest)
-  kailash: "2.54.0 -> 2.55.0"      # BUILD kailash-py on-disk root pyproject = 2.55.0; PyPI-latest 2.55.0
-  kailash-nexus: "2.12.0 -> 2.12.1" # BUILD packages/ 2.12.1; PyPI-latest 2.12.1
-  kailash-kaizen: "2.35.0 -> 2.37.0" # BUILD on-disk 2.37.1 UNRELEASED (PyPI 404); pin = PyPI-latest 2.37.0 per deployment.md
-  kaizen-agents: "0.10.0 -> 0.11.1" # BUILD on-disk 0.11.2 UNRELEASED; pin = PyPI-latest 0.11.1 per deployment.md
-  kailash-mcp: "0.4.0 (held)"       # already PyPI-latest
-  kailash-dataflow: "2.18.0 (held)" # already PyPI-latest
-  kailash-pact: "0.15.0 (held)"     # already PyPI-latest
-  kailash-ml: "2.2.2 (held)"        # already PyPI-latest
-  kailash-align: "0.7.4 (held)"     # already PyPI-latest
-sdk_pin_evidence: "BUILD kailash-py on-disk: root pyproject 2.55.0, packages/ dataflow 2.18.0 / nexus 2.12.1 / kaizen 2.37.1 / mcp 0.4.0 / pact 0.15.0 / ml 2.2.2 / align 0.7.4 / kaizen-agents 0.11.2. All 9 queried live vs pypi.org/pypi/<pkg>/json: kailash 2.55.0, nexus 2.12.1, dataflow 2.18.0, mcp 0.4.0, pact 0.15.0, ml 2.2.2, align 0.7.4 all == BUILD; kaizen PyPI-latest 2.37.0 (BUILD 2.37.1 unreleased), kaizen-agents PyPI-latest 0.11.1 (BUILD 0.11.2 unreleased). Pins track PyPI-resolvable per deployment.md."
-sdk_packages:                      # == pyproject.toml pins (step-3 parity) — PyPI-resolvable current
-  kailash: "2.55.0"
-  kailash-dataflow: "2.18.0"
-  kailash-nexus: "2.12.1"
-  kailash-kaizen: "2.37.0"
-  kailash-pact: "0.15.0"
-  kailash-mcp: "0.4.0"
-  kailash-ml: "2.2.2"
-  kailash-align: "0.7.4"
-  kaizen-agents: "0.11.1"
-enrichment:
-  version_bump: "3.28.1->3.29.0"  # MINOR — content (28-file delta) + pin refresh
-  install_verify: "SEE install_verify_result below"
-  hooks_resolve: "SEE hooks_result below"
-  description_label: "(Python)"   # parenthetical matches variant key py (Step 6b)
-  inbox: "already present (ensure-exists no-op)"
-template_version: "3.29.0"        # BUMPED — MINOR (content + pin refresh)
-notes:
-  - "SDK pins advanced to current BUILD kailash-py ground truth (root 2.55.0). kailash-kaizen + kaizen-agents pin to PyPI-resolvable latest (2.37.0 / 0.11.1) because BUILD on-disk (2.37.1 / 0.11.2) is unreleased on PyPI — per deployment.md 'pin tracks PyPI-resolvable' convention (fabricating an unreleased pin breaks pip install / uv sync, zero-tolerance)."
-  - "The 2.48.0-set outlier flagged in session notes was already reconciled upstream: origin/main (base e66cfa36, PR #105/#106) already carries the 2.54.0 set. This cycle advances 2.54.0 -> 2.55.0."
-  - "requirements-coc*.txt dev-container IMAGE pins left UNTOUCHED — separate loom dev-container staleness, out of pyproject/VERSION scope."
-  - "loom_sha 4a3ec312 -> 4cb1e6d9. Rule 8 N/A — cc-only-legacy has no derived CLI tree."
+  engine_changed: 11
+  version_stamp: "loom-tracking 2.55.0 -> 2.45.0 (own 3.29.0 preserved)"
+  baselines_emitted: { cc: 0 }
+  sdk_packages: "unchanged (py PyPI-verified 2.55.0-era set)"
