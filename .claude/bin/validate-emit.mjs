@@ -217,7 +217,7 @@ const COMMAND_LINE_CAP = 150; // cc-artifacts.md Rule 3 + command-authoring SKIL
 const COMMAND_LINE_CAP_EXCEPTIONS = Object.freeze({
   ".claude/commands/sweep.md": { maxBodyLines: 173, receipt: "journal/0468" }, // 177 wc -l (162→173: Sweep-10 deferred-quality revisit + 6-part management report, journal/0468)
   ".claude/commands/wrapup.md": { maxBodyLines: 168, receipt: "journal/0543" }, // 172 wc -l (160→168: co-owner-directed § Wave tracker POINTER + cap-3→4 allowlist + running-agent carve-out, journal/0543 § Implementation notes)
-  ".claude/commands/redteam.md": { maxBodyLines: 151, receipt: "journal/0544" }, // 155 wc -l (145→151: co-owner-directed Step 0.5 dual-surface deployment-surface classification + § Convergence Criteria skip-class carve-out, journal/0544)
+  ".claude/commands/redteam.md": { maxBodyLines: 153, receipt: "journal/0544 + #1218 (b5f7bb9b)" }, // 157 wc -l. 145→151 (journal/0544: co-owner Step 0.5 dual-surface classification + § Convergence Criteria skip-class carve-out); 151→153 ratified 2026-07-21: CW-SDL (#1218, b5f7bb9b) added the Conformance-Walk-as-primary-standing-gate wiring (§ Execution Model, the CW-vs-/redteam gate declaration) — load-bearing procedural depth, non-extractable (a gate declaration in the execution-model preamble); redteam.md is the canonical dense procedural command (cc-artifacts.md Rule 3 § Named-rationale exception). No redundant prose to trim without losing a load-bearing verification step.
 });
 
 // Commands intentionally exempt from the `---` frontmatter requirement.
