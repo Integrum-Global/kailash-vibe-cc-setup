@@ -1,12 +1,12 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, CC-only-legacy)
-timestamp: 2026-07-20T14:44:29Z
+timestamp: 2026-07-22T04:40:00Z
 source: loom/.claude
-loom_sha: c3791c19ef447d7fd50704a7323b449bc1543ec4
+loom_sha: 08cb86fb48eb7cb21051de27fc144aa1e3561a55
 variant: py
 visibility: public
 clis: ["claude"]
 stats:
-  engine_changed: 11
-  version_stamp: "loom-tracking 2.55.0 -> 2.45.0 (own 3.29.0 preserved)"
+  engine_changed: 25
+  version_stamp: "loom-tracking -> 2.45.0 @ 08cb86fb (own 3.29.0 -> 3.30.0)"
   baselines_emitted: { cc: 0 }
-  sdk_packages: "unchanged (py PyPI-verified 2.55.0-era set)"
+  sdk_packages: "7 bumped to PyPI-latest (kailash 2.60.1 etc.), 2 held (ml/align); uv lock exit 0, 298 pkgs"
