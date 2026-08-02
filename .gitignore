@@ -81,6 +81,8 @@ secrets/
 .claude/learning/learning-digest.json
 .claude/learning/.heartbeat-cache*
 .claude/learning/.session-end-cache*
+.claude/learning/derives-from/
+**/.claude/learning/derives-from/
 .claude/learning/sessionend-release-lease-*
 .claude/learning/observations.archive/
 .claude/operators.roster.json
