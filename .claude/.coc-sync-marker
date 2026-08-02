@@ -1,12 +1,63 @@
 # COC Sync Marker — kailash-coc-claude-py (py lane, CC-only-legacy)
-timestamp: 2026-07-22T04:40:00Z
+timestamp: 2026-08-02T13:54:05Z
 source: loom/.claude
-loom_sha: 08cb86fb48eb7cb21051de27fc144aa1e3561a55
+loom_sha: b442660198a15c2287ca5753d2096f329e467d86
+loom_sha_short: b4426601
+loom_version: 2.45.0
 variant: py
 visibility: public
 clis: ["claude"]
+template: kailash-coc-claude-py
+template_type: cc-only-legacy
+base_commit: cbfcea16d320
 stats:
-  engine_changed: 25
-  version_stamp: "loom-tracking -> 2.45.0 @ 08cb86fb (own 3.29.0 -> 3.30.0)"
-  baselines_emitted: { cc: 0 }
-  sdk_packages: "7 bumped to PyPI-latest (kailash 2.60.1 etc.), 2 held (ml/align); uv lock exit 0, 298 pkgs"
+  engine_files_applied: 493
+  changed_paths_total: 496
+  modified: 128
+  created: 368
+  preserved: 1            # CLAUDE.md (template-owned; never overwritten)
+  baselines_emitted: { cc: 0 }   # CLAUDE.md preserved, not emitted
+  cli_artifacts: null     # cc-only-legacy: no .codex/ or .gemini/ trees
+  created_by_area:
+    .claude/audit-fixtures: 344
+    .claude/hooks: 8
+    .claude/skills: 7
+    .claude/bin: 4
+    .claude/rules: 3
+    .claude/guides: 2
+  modified_by_area:
+    .claude/hooks: 36
+    .claude/audit-fixtures: 23
+    .claude/rules: 21
+    .claude/skills: 13
+    .claude/bin: 10
+    .claude/guides: 9
+    .claude/commands: 9
+    .claude/agents: 2
+    .claude/VERSION: 1
+    .claude/settings.json: 1
+  non_claude_modified:
+    - .gitignore
+    - pyproject.toml
+    - uv.lock
+  version_stamp: "loom-tracking -> 2.45.0 @ b4426601 (template own version 3.30.0 unchanged)"
+sdk_pins:
+  source: build.py (terrene-foundation/kailash-py @ pyproject.toml)
+  bumped:
+    kailash: ">=2.60.1 -> >=2.62.0"
+    kailash-nexus: ">=2.14.0 -> >=2.15.0"
+    kailash-kaizen: ">=2.40.0 -> >=2.45.0"
+    kailash-pact: ">=0.16.1 -> >=0.18.0"
+    kaizen-agents: ">=0.11.3 -> >=0.12.0"
+  unchanged:
+    kailash-mcp: ">=0.4.3"
+    kailash-dataflow: ">=2.19.1"
+    kailash-ml: ">=2.2.2"
+    kailash-align: ">=0.7.4"   # optional-dependencies.align
+  verification: "uv lock exit 0, 298 pkgs; uv sync --python 3.12 exit 0 (full install)"
+  known_env_gap: "uv sync under CPython 3.14 fails building llvmlite 0.44.0 (no cp314 wheel; setuptools spawn(dry_run=) incompat). Upstream numba/llvmlite gap, not a pin defect — kailash-ml pin unchanged this cycle."
+hooks_verified: 34/34
+settings_checks:
+  stale_scripts_hooks_refs: 0
+  operator_pii_tokens: 0
+inbox: pre-existing (README.md + .gitkeep; not overwritten)

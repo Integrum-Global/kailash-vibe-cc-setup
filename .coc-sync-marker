@@ -4,14 +4,14 @@
 #  monotonic loom_sha anchor; the stats block is retained as a back-reference
 #  for the prior 2.8.26 → 2.13.0 history. For current-cycle stats + SDK pins,
 #  read .claude/.coc-sync-marker.)
-timestamp: 2026-07-05T05:39:17Z
+timestamp: 2026-08-02T13:54:05Z
 source: loom/.claude
-loom_sha: a67471822e3d6cde2143a1436bd4ac64fe14dd7c
-loom_sha_short: a674718
+loom_sha: b442660198a15c2287ca5753d2096f329e467d86
+loom_sha_short: b4426601
 variant: py
 clis: ["claude"]
 template: kailash-coc-claude-py
-template_version: 3.25.0
+template_version: 3.30.0
 canonical_marker: .claude/.coc-sync-marker
 # --- historical back-reference (frozen at 2.13.0 / template 3.6.4) ---
 historical_loom_version: 2.13.0

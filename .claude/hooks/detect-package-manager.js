@@ -2,6 +2,14 @@
 /**
  * Package Manager Detection Hook for Kailash Setup
  *
+ * @settings-registration: optional-consumer — a py-VARIANT-ONLY hook (no global
+ *   counterpart), so it inherits no adjudication from a global sibling. Registered in
+ *   NO loom settings.json (loom has no variant-hook lifecycle-registration
+ *   mechanism — the hook-delivery validator scopes to the GLOBAL tree only), so the
+ *   Gate-2 reconciler never propagates it; the py USE template wires it in its OWN
+ *   .claude/settings.json on pull. Gate-2 disposition for the sync-manifest.yaml
+ *   FLAG (#1336/#1371): DECLARED inert rather than silently inert.
+ *
  * Detects which package manager is used in the current project:
  * - npm (package-lock.json)
  * - pnpm (pnpm-lock.yaml)
