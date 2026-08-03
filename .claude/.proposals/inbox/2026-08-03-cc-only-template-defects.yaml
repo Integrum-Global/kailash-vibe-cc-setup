@@ -1,0 +1,121 @@
+# Step-7c downstream upflow proposal (schema: skills/30-claude-code-patterns/sync-flow.md
+# § "Downstream Upflow Proposal Schema (Step 7c)"). Hop-level-only provenance — no
+# consumer-identifying fields. Artifact-only: no sdk_version / sdk_packages.
+# Offer path: HUMAN-GATED PR adding one YAML to the template's
+# .claude/.proposals/inbox/ (upstream-issue-hygiene.md MUST-1). No auto-submission.
+#
+# READ THIS FIRST: every entry below is a PROPOSED fix, not an authored one. No
+# diff exists for any of them in this consumer — the defects are template-side and
+# a local fix would be non-durable (rebuilt by the next /sync-to-use). `action:`
+# and `diff_lines:` therefore describe the change being ASKED FOR and are
+# estimates; do not look for a corresponding patch here. Each `reason:` names the
+# exact file:line so the defect is reproducible at the template.
+origin: downstream
+codify_date: 2026-08-02
+codify_session: "fix(coc): template defects surfaced by a post-sync redteam at a cc-only-legacy py consumer"
+template_slug: kailash-coc-claude-py
+template_version: "3.31.0"
+loom_sha: "b4426601"
+status: pending_review
+changes:
+  - file: .claude/bin/emit.mjs
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+1 -1"
+    reason: >-
+      Line 81 is a STATIC top-level `import { extractPolicies } from
+      "../codex-mcp-guard/extract-policies.mjs";` but `.claude/codex-mcp-guard/` is not
+      delivered to a `template_type: cc-only-legacy` / `clis: [claude]` consumer, so the
+      module fails at resolution and the tool exits 1 with ERR_MODULE_NOT_FOUND before any
+      argument is parsed. This is the exact class the template's own validate-emit.mjs
+      (~line 155) documents and forbids for ALWAYS_INCLUDE tools, and which
+      test-harness/tests/f1030d-fail-closed-bin.test.mjs A5 asserts against; the regression
+      ships because test-harness/ is loom-only and the assertion never runs downstream.
+      Consumer-visible effect: emit.mjs, validate-emit.mjs and validate-proximity-band.mjs
+      are all unrunnable, so the mechanical audit battery is dead at every cc-only consumer —
+      no headroom_pct, no rule-authoring.md Rule-10 proximity-band gate, and no
+      allowlist-paths-coverage (#443) check. Suggested fix: convert to the lazy guarded
+      `_require(...)`-in-try form already used elsewhere in the same file, with the
+      documented fail-soft skip branch when the Codex overlay is absent.
+  - file: .claude/bin/sync-from-canon-fetch.mjs
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+1 -1"
+    reason: >-
+      Second instance of the same F1030d class. Line 67 statically imports
+      `{ resolveRemote } from "./lib/loom-links.mjs"`, but `.claude/bin/lib/loom-links.mjs`
+      is on the template's own `.coc-obsoleted` list and is absent at consumers, so this
+      tool is likewise unrunnable. Same suggested fix (lazy guarded import + fail-soft
+      skip). Bundled with the emit.mjs item because one shared regression test over
+      ALWAYS_INCLUDE bin entrypoints would close both.
+  - file: .claude/rules/self-referential-codify.md
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+4 -1"
+    reason: >-
+      Two allowlist gaps against the rule's own Rule 2 ("added to the allowlist in the SAME
+      /codify that lands them"). (a) `hook-event-selection.md`, newly landed at 3.31.0, is
+      absent from the Rules allowlist while its sibling `hook-output-discipline.md` is
+      present; the rule's own body states the sibling relationship, and commands/codify.md
+      Step 6 makes it a mandatory codify gate step, so it is codify-governing on the same
+      predicate as the other entries. (b) Three bin files landed at 3.31.0 —
+      `repo-class.mjs`, `lib/emit-axes.mjs`, `lib/manifest-source.mjs` — fall outside the
+      Bin allowlist, which (unlike the Hooks bullet) carries no catch-all glob and
+      enumerates explicitly; `emit-derives-from.mjs` from the same batch IS listed, so the
+      omission looks accidental rather than deliberate.
+  - file: .claude/hooks/settings-deny-edit-guard.js
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+1 -1"
+    reason: >-
+      Landed at 3.31.0 without the `@hook-event:` header marker that hook-event-selection.md
+      MUST-1 — also landed at 3.31.0 — requires per registration. Its sibling
+      settings-deny-drift-guard.js WAS migrated to the marker form in the same batch, so the
+      two are inconsistent; this one still carries the superseded `* Event: PreToolUse (...)`
+      comment form. A rule and a hook violating that rule shipped in the same release.
+  - file: .claude/rules/git.md
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+1 -1"
+    reason: >-
+      A priority-0 baseline rule (loaded in every session, every consumer) opens with
+      "See `.claude/guides/rule-extracts/git.md`", but that path is absent at consumers AND
+      appears on the template's own `.coc-obsoleted` list, so the pointer can never resolve
+      downstream. Same class, also cited from always-loaded rules and absent at consumers:
+      `rules/cross-repo.md` (cited as normative MUST-1 authority from repo-scope-discipline.md
+      and multi-operator-coordination.md), `rules/coc-artifact-eval-coverage.md`, and
+      `skills/30-claude-code-patterns/kwarg-plumbing-discipline.md`. Suggested fix: either
+      ship the extract to the affected tiers or drop/reword the pointers, so a baseline rule
+      does not direct every consumer to an unreadable authority.
+  - file: .claude/commands/implement.md
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+8 -8"
+    reason: >-
+      Line 34 carries an EXECUTABLE MUST naming an agent that does not exist:
+      "You MUST always use the todo-manager to create detailed todos for EVERY SINGLE TODO
+      in `todos/000-master.md`." `todo-manager` is on the template's own `.coc-obsoleted`
+      (line 75, alongside `gh-manager` at line 73) and ships to no consumer, so the MUST is
+      unsatisfiable — an agent following /implement faithfully attempts a delegation that
+      cannot resolve. Seven sibling files carry the same dangling references and need the
+      same treatment: commands/todos.md, agents/analysis/analyst.md,
+      agents/implementation/tdd-implementer.md, agents/release/release-specialist.md
+      (gh-manager), skills/10-deployment-git/{SKILL.md, project-management.md,
+      todo-github-sync.md} (gh-manager). Suggested fix: retarget to a surviving agent or
+      drop the delegation clause. Higher severity than the prose-level dangling references
+      in the git.md entry because these are MUST-level instructions inside command and
+      agent bodies rather than documentation pointers.
+  - file: .claude/.coc-obsoleted
+    action: modified
+    base_version: "3.31.0"
+    diff_lines: "+0 -5"
+    reason: >-
+      The template ships five files on disk that its own `.coc-obsoleted` declares dead —
+      bin/emit-dev-container.mjs, bin/repin-targets.local.example.json,
+      hooks/coc-drift-warn.js, hooks/coc-telemetry-autocommit.js,
+      hooks/lib/o1-citation-check.js. Downstream sync must suppress them from the merge
+      (manifest is authoritative) or the obsoleted purge becomes a permanent no-op. This is
+      the SECOND consecutive cycle with the same inconsistency (3.30.0 and 3.31.0), so it is
+      not transient. Either the files should stop shipping or the entries should leave the
+      obsoleted list. Related residue: audit-fixture directories for two of the suppressed
+      hooks still ship and hard-`require()` them, so those fixtures fail on invocation.
