@@ -34,6 +34,34 @@ The **runner-exit** and **denominatorless-count** rows were adjudicated in the s
 
 **The budget row is the live example.** `check-rule-injection-budget.mjs` prints `✓ within budget` while individual profiles show byte counts above their stated budget — because "budget" there is a **snapshot with a 5% tolerance ceiling**, not an absolute cap. Reading its `✓` as clearance for a _baseline-emission_ question is the archetype: its verdict cannot change when baseline headroom moves, so it carries no information about baseline headroom. Rule-10 compliance is judged on `emit.mjs`'s `headroom_pct`; the injection guard is reported as a regression check on the surface it does cover. Two instruments, two questions — neither substitutes for the other.
 
+## The shell reports the LAST stage, not the one you meant
+
+`$?` after a pipeline is the exit status of its FINAL command. So `cmd | tail -3` followed by
+`echo "EXIT=$?"` reports **tail's** status — which is 0 essentially always, including when `cmd`
+exited non-zero. The printed `EXIT=0` is then a measurement of nothing, and it reads exactly like
+a passing gate.
+
+This is the MUST-1 failure in its cheapest form: the instrument's output is CONSTANT across the
+hypothesis. A gate that failed and a gate that passed both print `EXIT=0`.
+
+```bash
+# DO — capture the real status, or let the command's own output be the signal
+cmd >/tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "EXIT=$rc"
+set -o pipefail; cmd | tail -3; echo "EXIT=$?"      # or: pipefail makes the pipe report the failure
+# DO NOT — read $? through a pipe and call it the gate's verdict
+cmd | tail -3; echo "EXIT=$?"                        # tail's status; 0 even when cmd failed
+```
+
+**BLOCKED rationalizations:** "the command clearly failed, the exit code is a formality" / "I only
+piped it to trim the output" / "it printed EXIT=0 so the gate passed" / "pipefail is shell trivia".
+
+**Why:** the whole point of reading an exit code is to get a verdict the prose output might not
+make obvious; routing it through a pipe converts the verdict into a constant and hands back a
+confident `0`. When this fires, the FAIL lines are usually sitting in the output that was just
+printed — which is why it survives review: the evidence contradicting the reported verdict is
+visible in the same block. Observed twice in one session (2026-08-02), both times on a
+distribution gate, both times with the real `FAIL` rows on screen beneath the false `EXIT=0`.
+
 ## The fixture layer — a passing test is an instrument
 
 `probe-driven-verification.md` blocks the bag-of-words probe. One layer down sits the same defect wearing a lab coat: **the test itself**.
