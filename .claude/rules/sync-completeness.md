@@ -24,7 +24,7 @@ See `.claude/guides/rule-extracts/sync-completeness.md` for full incident detail
 
 ### 1. Every `/sync-to-*` Invocation MUST Enumerate Templates From The Manifest
 
-Every `/sync-to-use` (per-language: `/sync-to-use py`, `/sync-to-use rs`, `/sync-to-use rb`) AND every `/sync-to-build` invocation MUST start by enumerating `sync_targets[<lang>].templates[].repo` from `.claude/sync-manifest.yaml` and binding the resulting list to a variable for use in subsequent steps. Hand-typed lists, "the usual templates", "all 4 templates", or any count that is not produced by parsing the manifest at invocation time are BLOCKED.
+Every `/sync-to-use` (per-language: `/sync-to-use py`, `/sync-to-use rs`, `/sync-to-use base`) AND every `/sync-to-build` invocation MUST start by enumerating `sync_targets[<lang>].templates[].repo` from `.claude/sync-manifest.yaml` and binding the resulting list to a variable for use in subsequent steps. Hand-typed lists, "the usual templates", "all 4 templates", or any count that is not produced by parsing the manifest at invocation time are BLOCKED.
 
 ```bash
 # DO — parse manifest, bind to variable, iterate
@@ -65,9 +65,9 @@ After distribution, `/sync-to-use` MUST emit a verification table to the user wi
 | template                | pre  | post | loom_sha | synced_at            | hr% (codex/gemini) | ✓ |
 | ----------------------- | ---- | ---- | -------- | -------------------- | ------------------ | - |
 | kailash-coc-claude-py   | 2.19 | 2.20 | b4d2933  | 2026-05-06T14:22:00Z | 16.93 / 16.87      | ✓ |
-| kailash-coc-claude-rb   | 2.18 | 2.18 | b4d2933  | (skipped)            | n/a                | ✗ |
+| coc-base                | 2.18 | 2.18 | b4d2933  | (skipped)            | n/a                | ✗ |
 | kailash-coc-rs          | 2.21 | 2.21 | def4567  | (emit-blocked)       | 9.81 / 9.85        | ✗ |
-ERROR: ✗ rows halt sync — version-stale (rb) OR headroom-floor breach (rs, v6.2 Shard 2 — see (loom-internal reference)).
+ERROR: ✗ rows halt sync — version-stale (base) OR headroom-floor breach (rs, v6.2 Shard 2 — see (loom-internal reference)).
 
 # DO NOT — single-line completion claim, OR table missing landed/hr% column
 ✓ /sync-to-use py complete (kailash-coc-claude-py at 2.20.0)
@@ -176,17 +176,26 @@ node .claude/bin/sync-tier-aware.mjs --build py --verify   # swallowed rows = OU
 #   sync-tier-aware.mjs throws `Cannot find module './lib/loom-links.mjs'` on import
 ```
 
-**Why:** loom#676 — a consumer carrying the conventional Python build-artifact block (`lib/`) silently untracked the entire `.claude/bin/lib/` directory, including `loom-links.mjs` (the canonical NAME→location resolver per `cross-repo.md` MUST-1) + `slot-parser.mjs` + `strip-build-internal.mjs` that the tracked `sync-tier-aware.mjs` imports. It "worked" only because the files were present from the local sync; a fresh clone throws on import. The negation closes the known instance; the post-sync `git check-ignore` gate closes the CLASS for any future `.claude/**` subtree whose basename collides with a root ignore.
+**Why:** loom#676 — a consumer carrying the conventional Python build-artifact block (`lib/`) silently untracked the entire `.claude/bin/lib/` directory, including `loom-links.mjs` (the canonical NAME→location resolver — `repo-scope-discipline.md` § MUST NOT; the module itself is loom/BUILD-side) + `slot-parser.mjs` + `strip-build-internal.mjs` that the tracked `sync-tier-aware.mjs` imports. It "worked" only because the files were present from the local sync; a fresh clone throws on import. The negation closes the known instance; the post-sync `git check-ignore` gate closes the CLASS for any future `.claude/**` subtree whose basename collides with a root ignore.
 
 ### 7. Every Enumerated Target's Gate-2 Distribution MUST Capture The Exact Per-File Manifest Receipt
 
 Under the worktree-from-remote-main Gate-2 model (`artifact-flow.md` § "Exact Gate-1 / Gate-2 Tracking"; `journal/0403`), each enumerated target's distribution MUST capture the exact per-file manifest receipt the engine emits. `bin/sync-gate2-worktree.mjs::buildReceipt` returns `{loom_sha, base_sha, target, branch, manifest{added,modified,deleted}, changed_count, pr_url, merge_sha}` (plus `gate`, `lane`, the absolute `worktree` path, and `timestamp`) derived from the worktree's own `git status --porcelain` (`parseManifest`) — NOT a hand-typed file list — and the receipt MUST be recorded per enumerated target (Rule 1) in the gate-op journal receipt plus the coordination-log record, **scrubbed before the journal embed per `user-flow-validation.md` MUST-6** (the `pr_url` org/repo slug and the absolute `worktree` path are the scrub tokens, exactly as `artifact-flow.md` § "Exact Gate-1 / Gate-2 Tracking" MUST-2 requires). A completion claim citing only the version / headroom table (Rule 2) WITHOUT the per-target exact-manifest receipt is BLOCKED.
 
+Each target's receipt comes from ITS OWN worktree. `--stage-only` CREATES that worktree and PRINTS its path; `--finalize` MUST be handed the path belonging to the SAME target. `sync-gate2-worktree.mjs` enforces this — it refuses a `--worktree` that is not a linked worktree of the resolved target's clone (both sides resolved through `realpath`) — so a shared or stale path is a loud refusal, not a mis-delivery.
+
 ```bash
-# DO — capture the engine's per-target manifest receipt for every enumerated target
+# DO — one worktree PER TARGET, its path carried from --stage-only to --finalize
 for t in $TEMPLATES; do   # $TEMPLATES enumerated from the manifest per Rule 1
-  node .claude/bin/sync-gate2-worktree.mjs --lane use --target "$t" --finalize --worktree "$WT" --json
+  wt=$(node .claude/bin/sync-gate2-worktree.mjs --lane use --target "$t" --stage-only --json | jq -r .worktree)
+  # …enrich in "$wt" (VERSION, SDK pins, .coc-sync-marker, derived trees)…
+  node .claude/bin/sync-gate2-worktree.mjs --lane use --target "$t" --finalize --worktree "$wt" --json
 done   # each receipt: {loom_sha, base_sha, target, branch, manifest{added,modified,deleted}, changed_count, pr_url, merge_sha}
+
+# DO NOT — vary --target against ONE fixed worktree
+for t in $TEMPLATES; do
+  node … --target "$t" --finalize --worktree "$WT" --json   # $WT belongs to ONE target
+done   # every target after the first commits and PUSHES that target's tree to its own remote
 
 # DO NOT — record only "all N templates at 2.20.0 ✓" with no per-file manifest
 # (the version table alone cannot answer "which files changed in template rs?")
@@ -198,6 +207,7 @@ done   # each receipt: {loom_sha, base_sha, target, branch, manifest{added,modif
 - "The per-file manifest is engine-internal, not worth recording"
 - "I can reconstruct the manifest from the diff later"
 - "Hand-typing the changed files is close enough"
+- "One worktree is fine, the loop just re-points it at each target" (it does not re-point: `--finalize` commits and PUSHES whatever tree that path holds, to the resolved target's remote)
 
 **Why:** The per-target version row (Rule 2) answers "did the target reach the bumped version?"; only the exact per-file manifest answers "which files moved, and from which worktree base?" — the audit question a post-incident review or a partial-sync diagnosis needs. Capturing the engine's `buildReceipt` (derived from the worktree's own `git status`) makes the manifest a deterministic record, not a hand-typed reconstruction that drifts from what actually landed.
 
@@ -231,7 +241,8 @@ node .claude/bin/emit.mjs --all         --lang   "$LANG" --out "$OUT"   # AGENTS
 ```text
 # DO — build_multi_cli target: two-phase, re-emit the full derived tree, gate it, THEN finalize
 --stage-only → emit-cli-artifacts.mjs/emit-coc.mjs/emit.mjs into <scratch> → --assert-derived-trees (clean) → --finalize
-# DO NOT — bare single-shot on a build_multi_cli target (ships CC-only .claude/, no .codex/.gemini/.coc — the #181 gap)
+# DO NOT — bare single-shot on a build_multi_cli target (the #181 gap). Since loom#1690 the
+# driver REFUSES this (exit 2, before any fetch/worktree) instead of shipping CC-only silently.
 node .claude/bin/sync-gate2-worktree.mjs --lane build --target py   # single-shot skips the derived-tree enrichment
 ```
 
@@ -274,7 +285,7 @@ node .claude/bin/sync-gate2-worktree.mjs --lane build --target py   # single-sho
 
 - **Ship a bare single-shot `/sync-to-build` on a `build_multi_cli` target (`py`/`rs`), skipping the two-phase derived-CLI-tree re-emit (`.codex/**`, `.gemini/**`, `.coc/**`, `AGENTS.md`, `GEMINI.md`) + the `--assert-derived-trees` presence gate (#181).**
 
-**Why:** A single-shot `build_multi_cli` sync ships a CC-only BUILD PR — `.codex/.gemini/.coc` absent, the exact #181 gap — while the CC lane silently advances; the wired `--assert-derived-trees` exit-code gate makes the omission loud before `--finalize`.
+**Why:** A single-shot `build_multi_cli` sync ships a CC-only BUILD PR — `.codex/.gemini/.coc` absent, the exact #181 gap — while the CC lane silently advances; the wired `--assert-derived-trees` exit-code gate makes the omission loud before `--finalize`. Since loom#1690 BOTH halves are enforced by `sync-gate2-worktree.mjs` itself: it reads `build_multi_cli`, refuses the single-shot outright (exit 2), and re-asserts derived-tree presence at `--finalize` (exit 4) — so neither half depends on the operator remembering a step.
 
 ## Trust Posture Wiring
 
@@ -286,7 +297,7 @@ MUST Rules 1–4 above carry three independent Trust Posture Wiring profiles, pa
 - **Grace period:** 7 days from rule landing (2026-05-06 → 2026-05-13, expired).
 - **Regression-within-grace:** any new `/sync-to-*` invocation OR any `sync-manifest.yaml` edit that adds a template without canonical-schema VERSION field triggers emergency downgrade L5 → L4 per `trust-posture.md` MUST Rule 4.
 - **Receipt:** SessionStart requires `[ack: sync-completeness]` if prior journal references `/sync-to-*` AND `posture.json::pending_verification` includes this rule_id.
-- **Detection:** `cc-architect` mechanical sweep at `/codify`: (1) `grep -rn 'yq\|templates\[\]\.repo' .claude/commands/sync-to-*.md` — every `/sync-to-*` command body MUST enumerate from manifest; (2) AST sweep on `sync.md` / `sync-to-build.md` — every distribution loop MUST be preceded by manifest-enumeration.
+- **Detection:** `cc-architect` mechanical sweep at `/codify`: (1) `grep -rn 'yq\|templates\[\]\.repo' .claude/commands/sync-to-*.md` — every `/sync-to-*` command body MUST enumerate from manifest; (2) AST sweep on `sync.md` / `sync-to-build.md` — every distribution loop MUST be preceded by manifest-enumeration. Probes `.claude/test-harness/probes/sync-completeness.probes.json` — NOT YET AUTHORED, declared in `phase2-deferrals.json::probe_authorship_deferrals`.
 
 ### Rule 3 — VERSION schema mismatch (structural)
 
