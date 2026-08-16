@@ -2468,7 +2468,7 @@ wheels = [
 
 [[package]]
 name = "kailash-mcp"
-version = "0.4.3"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -2477,7 +2477,7 @@ dependencies = [
     { name = "websockets" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/d6/b9f2a1e59da6c879bb30a55df08b965b770ed93cf3949dc933a299d43892/kailash_mcp-0.4.3-py3-none-any.whl", hash = "sha256:ceff01dbee4df4ffa9616d6fb0cb1a7499022d0a76bfd4a8ff001db53a11f080", size = 246732, upload-time = "2026-07-21T12:43:58.285Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/b8/a29e0a6dd1458596c7150e28b3282f21355cef55dbf5bff11f54f367b58e/kailash_mcp-0.5.1-py3-none-any.whl", hash = "sha256:4b56f667f1f55c8e7a75edec4b1b669c5229cdf5644f42a1f40f0555b7d44b45", size = 279312, upload-time = "2026-08-09T15:53:55.553Z" },
 ]
 
 [[package]]
@@ -3543,7 +3543,7 @@ requires-dist = [
     { name = "kailash-align", extras = ["all"], marker = "extra == 'all'", specifier = ">=0.7.4" },
     { name = "kailash-dataflow", specifier = ">=2.19.1" },
     { name = "kailash-kaizen", specifier = ">=2.45.0" },
-    { name = "kailash-mcp", specifier = ">=0.4.3" },
+    { name = "kailash-mcp", specifier = ">=0.5.1" },
     { name = "kailash-ml", specifier = ">=2.2.2" },
     { name = "kailash-nexus", specifier = ">=2.15.0" },
     { name = "kailash-pact", specifier = ">=0.18.0" },
