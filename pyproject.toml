@@ -25,7 +25,7 @@ dependencies = [
     # Pins track PyPI-resolvable versions per rules/deployment.md
     # (bumping to unreleased versions breaks downstream uv sync).
     "kailash>=2.62.0",
-    "kailash-mcp>=0.4.3",
+    "kailash-mcp>=0.5.1",
     "kailash-nexus>=2.15.0",
     "kailash-dataflow>=2.19.1",
     "kailash-kaizen>=2.45.0",
