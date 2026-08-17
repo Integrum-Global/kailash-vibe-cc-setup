@@ -1,63 +1,55 @@
-# COC Sync Marker — kailash-coc-claude-py (py lane, CC-only-legacy)
-timestamp: 2026-08-02T13:54:05Z
+# COC Sync Marker — kailash-coc-claude-py (py lane, cc-only)
+timestamp: 2026-08-17T11:05:00Z
 source: loom/.claude
-loom_sha: b442660198a15c2287ca5753d2096f329e467d86
-loom_sha_short: b4426601
-loom_version: 2.45.0
+loom_sha: f3513659
 variant: py
-visibility: public
 clis: ["claude"]
-template: kailash-coc-claude-py
-template_type: cc-only-legacy
-base_commit: cbfcea16d320
+visibility: public
+scope_this_cycle: content+sdk-pins   # cc-only-legacy: .claude/ content axis + Steps 9-10; Steps 6.5/6.6/6.7 NOT APPLICABLE
 stats:
-  engine_files_applied: 493
-  changed_paths_total: 496
-  modified: 128
-  created: 368
-  preserved: 1            # CLAUDE.md (template-owned; never overwritten)
-  baselines_emitted: { cc: 0 }   # CLAUDE.md preserved, not emitted
-  cli_artifacts: null     # cc-only-legacy: no .codex/ or .gemini/ trees
-  created_by_area:
-    .claude/audit-fixtures: 344
-    .claude/hooks: 8
-    .claude/skills: 7
-    .claude/bin: 4
-    .claude/rules: 3
-    .claude/guides: 2
-  modified_by_area:
-    .claude/hooks: 36
-    .claude/audit-fixtures: 23
-    .claude/rules: 21
-    .claude/skills: 13
-    .claude/bin: 10
-    .claude/guides: 9
-    .claude/commands: 9
-    .claude/agents: 2
-    .claude/VERSION: 1
-    .claude/settings.json: 1
-  non_claude_modified:
-    - .gitignore
-    - pyproject.toml
-    - uv.lock
-  version_stamp: "loom-tracking -> 2.45.0 @ b4426601 (template own version 3.30.0 unchanged)"
+  engine_changed: 266   # engine file(s) applied; base origin/main c2d660213fc1
+  verify_failures: 0    # stage engine sync-tier-aware --verify CONSISTENT (2689 in-plan files)
+  version_stamp: "loom-tracking -> 2.45.0 @ f3513659"
+  baselines_emitted: { cc: 0, codex: 0, gemini: 0 }
+  cli_artifacts: none
+  coc_artifacts: none
 sdk_pins:
   source: build.py (terrene-foundation/kailash-py @ pyproject.toml)
   bumped:
-    kailash: ">=2.60.1 -> >=2.62.0"
-    kailash-nexus: ">=2.14.0 -> >=2.15.0"
-    kailash-kaizen: ">=2.40.0 -> >=2.45.0"
-    kailash-pact: ">=0.16.1 -> >=0.18.0"
-    kaizen-agents: ">=0.11.3 -> >=0.12.0"
-  unchanged:
-    kailash-mcp: ">=0.4.3"
-    kailash-dataflow: ">=2.19.1"
-    kailash-ml: ">=2.2.2"
-    kailash-align: ">=0.7.4"   # optional-dependencies.align
-  verification: "uv lock exit 0, 298 pkgs; uv sync --python 3.12 exit 0 (full install)"
-  known_env_gap: "uv sync under CPython 3.14 fails building llvmlite 0.44.0 (no cp314 wheel; setuptools spawn(dry_run=) incompat). Upstream numba/llvmlite gap, not a pin defect — kailash-ml pin unchanged this cycle."
-hooks_verified: 34/34
-settings_checks:
-  stale_scripts_hooks_refs: 0
-  operator_pii_tokens: 0
-inbox: pre-existing (README.md + .gitkeep; not overwritten)
+    kailash-mcp: ">=0.4.3 -> >=0.5.1"
+  NOT_bumped:
+    kailash: ">=2.62.0 held — see note; 2.63.0 is UNPUBLISHED"
+  lock: "uv lock re-resolved, exit 0, 298 packages; exactly ONE version line moved (kailash-mcp 0.4.3 -> 0.5.1)"
+preserved: [CLAUDE.md, settings.json, "visibility:public"]
+note: |
+  loom@43167a54->f3513659 Gate-2 claude-py sync (cc-only lane) — the
+  xref-integrity release. Third of nine Gate-2 surfaces from ONE corpus.
+
+  DERIVED TREES: NOT APPLICABLE, verified rather than assumed. `clis: ["claude"]`
+  makes this cc-only-legacy; checked against the target's own git rather than
+  inferred from the declaration — AGENTS.md, GEMINI.md, .codex/, .gemini/ and
+  .coc/ are ALL untracked here. Steps 6.5/6.6/6.7 are NOT APPLICABLE, not skipped.
+
+  SDK PINS — and a correction worth recording, because the instrument caught an
+  error the eye did not. Comparing this template's pins against the BUILD repo
+  showed two apparent drifts: `kailash` 2.62.0 vs 2.63.0, and `kailash-mcp` 0.4.3
+  vs 0.5.1. Both were bumped, and `uv lock` REFUSED:
+
+    Because only kailash<=2.62.0 is available and your project depends on
+    kailash>=2.63.0, we can conclude that your project's requirements are
+    unsatisfiable.
+
+  The BUILD repo's `version = "2.63.0"` is its NEXT version, not a PUBLISHED one.
+  Reading it as "the version to pin to" was a producer-field-vs-reader-question
+  error (`instrument-discipline.md` MUST-4): the field's semantics are fixed by
+  its producer. `kailash` is therefore held at >=2.62.0 and the drift is NOT real.
+
+  `kailash-mcp>=0.5.1` IS published, and only that one moved: `uv lock` exit 0,
+  298 packages resolved, exactly one version line changed in the lock. The lock
+  was REGENERATED rather than hand-edited — a hand-edited lock file is consistent
+  with nothing and fails at install time rather than at commit time.
+
+  DISCLOSURE: scan CLEAN on the loom SOURCE tree (4331 files, 0 findings) and
+  CLEAN on the staged worktree (2680 files, 0 findings).
+
+  PROVENANCE: restamped to f3513659 before finalize. visibility=public preserved.

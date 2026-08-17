@@ -8,7 +8,7 @@
     "type": "coc-source",
     "version": "2.45.0",
     "build_version": "2.45.0",
-    "synced_at": "2026-08-02T13:54:36.158Z",
+    "synced_at": "2026-08-17T10:52:02.361Z",
     "sdk_packages": {
       "kailash": "2.60.1",
       "kailash-dataflow": "2.19.1",
@@ -20,8 +20,8 @@
       "kailash-align": "0.7.4",
       "kaizen-agents": "0.11.3"
     },
-    "loom_sha": "b4426601",
-    "source_commit": "b4426601",
+    "loom_sha": "f35136595280743b2901809b2f863a9ff4c2f232",
+    "source_commit": "f35136595280743b2901809b2f863a9ff4c2f232",
     "template_version": "2.45.0"
   },
   "changelog": [
@@ -1077,6 +1077,6 @@
     }
   ],
   "synced_at": "2026-05-18T11:01:54Z",
-  "updated": "2026-08-02",
+  "updated": "2026-08-17",
   "repo": "terrene-foundation/kailash-coc-claude-py"
 }
