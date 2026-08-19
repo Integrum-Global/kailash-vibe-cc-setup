@@ -8,20 +8,20 @@
     "type": "coc-source",
     "version": "2.45.0",
     "build_version": "2.45.0",
-    "synced_at": "2026-08-17T11:34:30.830Z",
+    "synced_at": "2026-08-19T00:39:03.009Z",
     "sdk_packages": {
-      "kailash": "2.60.1",
+      "kailash": "2.62.0",
       "kailash-dataflow": "2.19.1",
-      "kailash-nexus": "2.14.0",
-      "kailash-kaizen": "2.40.0",
-      "kailash-pact": "0.16.1",
-      "kailash-mcp": "0.4.3",
+      "kailash-nexus": "2.15.0",
+      "kailash-kaizen": "2.45.0",
+      "kailash-pact": "0.18.0",
+      "kailash-mcp": "0.5.1",
       "kailash-ml": "2.2.2",
       "kailash-align": "0.7.4",
       "kaizen-agents": "0.11.3"
     },
-    "loom_sha": "f40f9588ec23bed19c09cefd4f19352c3fa586fc",
-    "source_commit": "f40f9588ec23bed19c09cefd4f19352c3fa586fc",
+    "loom_sha": "0c663306",
+    "source_commit": "0c663306",
     "template_version": "2.45.0"
   },
   "changelog": [
@@ -1077,6 +1077,6 @@
     }
   ],
   "synced_at": "2026-05-18T11:01:54Z",
-  "updated": "2026-08-17",
+  "updated": "2026-08-19",
   "repo": "terrene-foundation/kailash-coc-claude-py"
 }

@@ -888,6 +888,26 @@
         ".claude/rules/autonomous-execution.md"
       ]
     },
+    "journal/0581": {
+      "why": "outside_owned_surfaces",
+      "sources": [
+        ".claude/guides/rule-extracts/instrument-bipolarity.md",
+        ".claude/rules/instrument-bipolarity.md"
+      ]
+    },
+    "journal/0582": {
+      "why": "outside_owned_surfaces",
+      "sources": [
+        ".claude/guides/rule-extracts/instrument-bipolarity.md",
+        ".claude/rules/instrument-bipolarity.md"
+      ]
+    },
+    "journal/0583": {
+      "why": "outside_owned_surfaces",
+      "sources": [
+        ".claude/rules/burndown-integrity.md"
+      ]
+    },
     "rules/coc-artifact-eval-coverage.md": {
       "why": "use_exclude",
       "sources": [
